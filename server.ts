@@ -3,105 +3,138 @@ import { createServer as createViteServer } from "vite";
 import Database from "better-sqlite3";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
+import axios from "axios";
 import path from "path";
-import { GoogleGenAI } from "@google/genai";
 
-const JWT_SECRET = process.env.JWT_SECRET || "nexus-gtm-secret-key";
-const db = new Database("nexus_gtm.db");
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
+const JWT_SECRET = process.env.JWT_SECRET || "vyos-enterprise-secret-key";
+const db = new Database("vyos_manager.db");
 
-// Initialize Database for GTM
+// Initialize Database
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE,
     password TEXT,
-    role TEXT DEFAULT 'member', -- admin, manager, member
-    team_id TEXT DEFAULT 'default'
+    role TEXT DEFAULT 'operator', -- admin, operator, read-only
+    tenant_id TEXT DEFAULT 'default'
   );
 
-  CREATE TABLE IF NOT EXISTS leads (
+  CREATE TABLE IF NOT EXISTS router_groups (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    first_name TEXT,
-    last_name TEXT,
-    email TEXT UNIQUE,
-    company TEXT,
-    title TEXT,
-    status TEXT DEFAULT 'new', -- new, qualified, engaged, converted, lost
-    score INTEGER DEFAULT 0,
-    source TEXT,
-    owner_id INTEGER,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(owner_id) REFERENCES users(id)
+    name TEXT UNIQUE,
+    tenant_id TEXT DEFAULT 'default'
   );
 
-  CREATE TABLE IF NOT EXISTS campaigns (
+  CREATE TABLE IF NOT EXISTS routers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT,
-    type TEXT, -- email, social, ads, event
-    status TEXT DEFAULT 'active',
-    budget REAL,
-    spent REAL DEFAULT 0,
-    leads_count INTEGER DEFAULT 0,
-    start_date DATETIME,
-    end_date DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    url TEXT,
+    api_key TEXT,
+    group_id INTEGER,
+    tenant_id TEXT DEFAULT 'default',
+    status TEXT DEFAULT 'unknown',
+    last_check DATETIME,
+    FOREIGN KEY(group_id) REFERENCES router_groups(id)
   );
 
-  CREATE TABLE IF NOT EXISTS deals (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    lead_id INTEGER,
-    name TEXT,
-    value REAL,
-    stage TEXT DEFAULT 'discovery', -- discovery, qualification, proposal, negotiation, closed_won, closed_lost
-    probability INTEGER DEFAULT 10,
-    expected_close DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(lead_id) REFERENCES leads(id)
+  CREATE TABLE IF NOT EXISTS user_router_groups (
+    user_id INTEGER,
+    group_id INTEGER,
+    PRIMARY KEY(user_id, group_id),
+    FOREIGN KEY(user_id) REFERENCES users(id),
+    FOREIGN KEY(group_id) REFERENCES router_groups(id)
   );
 
-  CREATE TABLE IF NOT EXISTS activity_logs (
+  CREATE TABLE IF NOT EXISTS audit_logs (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     action TEXT,
-    entity_type TEXT,
-    entity_id INTEGER,
+    target_router_id INTEGER,
     details TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
+    ip_address TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS settings (
+    key TEXT PRIMARY KEY,
+    value TEXT
   );
 `);
 
-// Seed Admin User
+// Database Migrations (Add missing columns to existing tables)
+const tables = db.prepare("PRAGMA table_info(routers)").all() as any[];
+const columns = tables.map(c => c.name);
+
+if (!columns.includes('group_id')) {
+  db.exec("ALTER TABLE routers ADD COLUMN group_id INTEGER");
+}
+if (!columns.includes('tenant_id')) {
+  db.exec("ALTER TABLE routers ADD COLUMN tenant_id TEXT DEFAULT 'default'");
+}
+if (!columns.includes('status')) {
+  db.exec("ALTER TABLE routers ADD COLUMN status TEXT DEFAULT 'unknown'");
+}
+if (!columns.includes('last_check')) {
+  db.exec("ALTER TABLE routers ADD COLUMN last_check DATETIME");
+}
+
+const userColumns = (db.prepare("PRAGMA table_info(users)").all() as any[]).map(c => c.name);
+if (!userColumns.includes('tenant_id')) {
+  db.exec("ALTER TABLE users ADD COLUMN tenant_id TEXT DEFAULT 'default'");
+}
+
+const auditColumns = (db.prepare("PRAGMA table_info(audit_logs)").all() as any[]).map(c => c.name);
+if (!auditColumns.includes('target_router_id')) {
+  db.exec("ALTER TABLE audit_logs ADD COLUMN target_router_id INTEGER");
+}
+if (!auditColumns.includes('details')) {
+  db.exec("ALTER TABLE audit_logs ADD COLUMN details TEXT");
+}
+if (!auditColumns.includes('ip_address')) {
+  db.exec("ALTER TABLE audit_logs ADD COLUMN ip_address TEXT");
+}
+
+// Seed default settings
+const seedSettings = [
+  ['sso_enabled', 'false'],
+  ['syslog_enabled', 'false'],
+  ['tenancy_enabled', 'true'],
+  ['audit_retention', '90']
+];
+const insertSetting = db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)");
+seedSettings.forEach(([k, v]) => insertSetting.run(k, v));
+
+// Seed Admin User if not exists
 const adminExists = db.prepare("SELECT * FROM users WHERE username = 'admin'").get();
 if (!adminExists) {
   const hashedPassword = bcrypt.hashSync(process.env.ADMIN_PASSWORD || "admin123", 10);
   db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)").run("admin", hashedPassword, "admin");
 }
 
-// Seed Sample Data
-const leadCount = db.prepare("SELECT COUNT(*) as count FROM leads").get() as any;
-if (leadCount.count === 0) {
-  const insertLead = db.prepare("INSERT INTO leads (first_name, last_name, email, company, title, status, score, source) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-  insertLead.run("Sarah", "Chen", "sarah@techflow.io", "TechFlow", "VP Engineering", "qualified", 85, "LinkedIn");
-  insertLead.run("Marcus", "Rodriguez", "m.rod@globalcorp.com", "GlobalCorp", "CTO", "engaged", 92, "Referral");
-  insertLead.run("Elena", "Sokolov", "elena@datapeak.ai", "DataPeak", "Head of Growth", "new", 45, "Webinar");
-
-  const insertCampaign = db.prepare("INSERT INTO campaigns (name, type, budget, spent, leads_count) VALUES (?, ?, ?, ?, ?)");
-  insertCampaign.run("Q1 Enterprise Outreach", "email", 5000, 1200, 45);
-  insertCampaign.run("Cloud Summit 2026", "event", 25000, 18000, 120);
-
-  const insertDeal = db.prepare("INSERT INTO deals (lead_id, name, value, stage, probability) VALUES (?, ?, ?, ?, ?)");
-  insertDeal.run(1, "TechFlow Enterprise License", 45000, "proposal", 60);
-  insertDeal.run(2, "GlobalCorp Global Rollout", 120000, "negotiation", 80);
-}
-
 async function startServer() {
   const app = express();
   app.use(express.json());
 
+  // Password Validation
+  const validatePassword = (password: string) => {
+    const minLength = 8;
+    const hasUpperCase = /[A-Z]/.test(password);
+    const hasLowerCase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    
+    if (password.length < minLength) return "Password must be at least 8 characters long";
+    if (!hasUpperCase) return "Password must contain at least one uppercase letter";
+    if (!hasLowerCase) return "Password must contain at least one lowercase letter";
+    if (!hasNumber) return "Password must contain at least one number";
+    if (!hasSpecial) return "Password must contain at least one special character";
+    return null;
+  };
   const authenticate = (req: any, res: any, next: any) => {
     const token = req.headers.authorization?.split(" ")[1];
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    req.clientIp = ip;
+
     if (!token) return res.status(401).json({ error: "Unauthorized" });
     try {
       const decoded = jwt.verify(token, JWT_SECRET);
@@ -112,95 +145,349 @@ async function startServer() {
     }
   };
 
-  // Auth
+  // RBAC Middleware
+  const authorize = (roles: string[]) => (req: any, res: any, next: any) => {
+    if (!roles.includes(req.user.role)) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+    next();
+  };
+
+  // API Routes
   app.post("/api/login", (req, res) => {
     const { username, password } = req.body;
     const user: any = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
     if (user && bcrypt.compareSync(password, user.password)) {
-      const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET);
+      const token = jwt.sign({ id: user.id, username: user.username, role: user.role, tenant: user.tenant_id }, JWT_SECRET);
       res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
     } else {
       res.status(401).json({ error: "Invalid credentials" });
     }
   });
 
-  // Leads
-  app.get("/api/leads", authenticate, (req, res) => {
-    const leads = db.prepare("SELECT * FROM leads ORDER BY created_at DESC").all();
-    res.json(leads);
+  // Router Management
+  app.get("/api/routers", authenticate, (req: any, res) => {
+    let routers;
+    if (req.user.role === 'admin') {
+      routers = db.prepare("SELECT id, name, url, status, group_id FROM routers WHERE tenant_id = ?").all(req.user.tenant);
+    } else {
+      // Limit to groups user has access to
+      routers = db.prepare(`
+        SELECT r.id, r.name, r.url, r.status, r.group_id 
+        FROM routers r
+        JOIN user_router_groups urg ON r.group_id = urg.group_id
+        WHERE r.tenant_id = ? AND urg.user_id = ?
+      `).all(req.user.tenant, req.user.id);
+    }
+    res.json(routers);
   });
 
-  app.post("/api/leads", authenticate, (req: any, res) => {
-    const { first_name, last_name, email, company, title, source } = req.body;
+  app.post("/api/routers", authenticate, authorize(["admin"]), (req: any, res) => {
+    const { name, url, api_key, group_id } = req.body;
+    
+    // Basic validation
+    if (!url.startsWith('https://')) return res.status(400).json({ error: "URL must start with https://" });
+    if (!api_key) return res.status(400).json({ error: "API Key is required" });
+
+    // IP/Hostname validation
     try {
-      const result = db.prepare("INSERT INTO leads (first_name, last_name, email, company, title, source, owner_id) VALUES (?, ?, ?, ?, ?, ?, ?)")
-        .run(first_name, last_name, email, company, title, source, req.user.id);
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname;
+      // Simple IP or hostname check
+      if (!hostname) throw new Error("Invalid hostname");
+    } catch {
+      return res.status(400).json({ error: "Invalid URL format" });
+    }
+
+    try {
+      const result = db.prepare("INSERT INTO routers (name, url, api_key, group_id, tenant_id) VALUES (?, ?, ?, ?, ?)")
+        .run(name, url, api_key, group_id || null, req.user.tenant);
+      
+      db.prepare("INSERT INTO audit_logs (user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(req.user.id, 'add_router', result.lastInsertRowid, JSON.stringify({ name, url }), req.clientIp);
+
       res.json({ id: result.lastInsertRowid });
     } catch (err: any) {
-      res.status(400).json({ error: "Lead already exists or invalid data" });
+      res.status(500).json({ error: err.message });
     }
   });
 
-  // Campaigns
-  app.get("/api/campaigns", authenticate, (req, res) => {
-    const campaigns = db.prepare("SELECT * FROM campaigns ORDER BY created_at DESC").all();
-    res.json(campaigns);
+  app.patch("/api/routers/:id", authenticate, authorize(["admin"]), (req: any, res) => {
+    const { name, url, api_key, group_id } = req.body;
+    const routerId = req.params.id;
+
+    try {
+      const existing: any = db.prepare("SELECT * FROM routers WHERE id = ? AND tenant_id = ?").get(routerId, req.user.tenant);
+      if (!existing) return res.status(404).json({ error: "Router not found" });
+
+      const updates: string[] = [];
+      const values: any[] = [];
+
+      if (name) { updates.push("name = ?"); values.push(name); }
+      if (url) { updates.push("url = ?"); values.push(url); }
+      if (api_key) { updates.push("api_key = ?"); values.push(api_key); }
+      if (group_id !== undefined) { updates.push("group_id = ?"); values.push(group_id || null); }
+
+      if (updates.length === 0) return res.json({ success: true });
+
+      values.push(routerId);
+      values.push(req.user.tenant);
+
+      db.prepare(`UPDATE routers SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`).run(...values);
+      
+      db.prepare("INSERT INTO audit_logs (user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(req.user.id, 'update_router', routerId, JSON.stringify(req.body), req.clientIp);
+
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
   });
 
-  // Deals / Pipeline
-  app.get("/api/deals", authenticate, (req, res) => {
-    const deals = db.prepare(`
-      SELECT d.*, l.first_name, l.last_name, l.company 
-      FROM deals d
-      JOIN leads l ON d.lead_id = l.id
-      ORDER BY d.created_at DESC
-    `).all();
-    res.json(deals);
+  app.delete("/api/routers/:id", authenticate, authorize(["admin"]), (req: any, res) => {
+    const routerId = Number(req.params.id);
+    console.log(`Attempting to delete router ${routerId} for tenant ${req.user.tenant}`);
+    
+    const router: any = db.prepare("SELECT name FROM routers WHERE id = ? AND tenant_id = ?").get(routerId, req.user.tenant);
+    if (!router) {
+      console.warn(`Router ${routerId} not found for tenant ${req.user.tenant}`);
+      return res.status(404).json({ error: "Router not found" });
+    }
+
+    try {
+      const deleteTx = db.transaction(() => {
+        const info = db.prepare("DELETE FROM routers WHERE id = ? AND tenant_id = ?").run(routerId, req.user.tenant);
+        console.log(`Deleted ${info.changes} rows from routers`);
+        
+        db.prepare("INSERT INTO audit_logs (user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+          .run(req.user.id, 'delete_router', routerId, JSON.stringify({ name: router.name }), req.clientIp);
+      });
+      
+      deleteTx();
+      res.json({ success: true });
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      res.status(500).json({ error: "Failed to delete router: " + err.message });
+    }
   });
 
-  // Dashboard Stats
-  app.get("/api/stats", authenticate, (req, res) => {
-    const totalPipeline = db.prepare("SELECT SUM(value) as total FROM deals WHERE stage NOT IN ('closed_lost')").get() as any;
-    const closedWon = db.prepare("SELECT SUM(value) as total FROM deals WHERE stage = 'closed_won'").get() as any;
-    const leadCount = db.prepare("SELECT COUNT(*) as count FROM leads").get() as any;
-    const activeCampaigns = db.prepare("SELECT COUNT(*) as count FROM campaigns WHERE status = 'active'").get() as any;
+  // Router Groups
+  app.get("/api/router-groups", authenticate, (req: any, res) => {
+    const groups = db.prepare("SELECT * FROM router_groups WHERE tenant_id = ?").all(req.user.tenant);
+    res.json(groups);
+  });
 
+  app.post("/api/router-groups", authenticate, authorize(["admin"]), (req: any, res) => {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: "Group name is required" });
+    try {
+      const result = db.prepare("INSERT INTO router_groups (name, tenant_id) VALUES (?, ?)").run(name, req.user.tenant);
+      res.json({ id: result.lastInsertRowid });
+    } catch {
+      res.status(400).json({ error: "Group already exists" });
+    }
+  });
+
+  app.delete("/api/router-groups/:id", authenticate, authorize(["admin"]), (req: any, res) => {
+    try {
+      // Check if routers are in this group
+      const count: any = db.prepare("SELECT COUNT(*) as count FROM routers WHERE group_id = ?").get(req.params.id);
+      if (count.count > 0) return res.status(400).json({ error: "Cannot delete group with active routers" });
+
+      db.prepare("DELETE FROM router_groups WHERE id = ? AND tenant_id = ?").run(req.params.id, req.user.tenant);
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // User Management
+  app.get("/api/users", authenticate, authorize(["admin"]), (req, res) => {
+    const users = db.prepare("SELECT id, username, role, tenant_id FROM users").all();
+    res.json(users);
+  });
+
+  app.post("/api/users", authenticate, authorize(["admin"]), (req, res) => {
+    const { username, password, role } = req.body;
+    
+    const passwordError = validatePassword(password);
+    if (passwordError) return res.status(400).json({ error: passwordError });
+
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    try {
+      const result = db.prepare("INSERT INTO users (username, password, role, tenant_id) VALUES (?, ?, ?, ?)").run(username, hashedPassword, role, (req as any).user.tenant);
+      res.json({ id: result.lastInsertRowid });
+    } catch (err: any) {
+      res.status(400).json({ error: "Username already exists" });
+    }
+  });
+
+  app.patch("/api/users/:id/password", authenticate, authorize(["admin"]), (req: any, res) => {
+    const { password } = req.body;
+    const passwordError = validatePassword(password);
+    if (passwordError) return res.status(400).json({ error: passwordError });
+
+    const hashedPassword = bcrypt.hashSync(password, 10);
+    db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashedPassword, req.params.id);
+    res.json({ success: true });
+  });
+
+  app.delete("/api/users/:id", authenticate, authorize(["admin"]), (req: any, res) => {
+    if (req.params.id == req.user.id) return res.status(400).json({ error: "Cannot delete yourself" });
+    db.prepare("DELETE FROM user_router_groups WHERE user_id = ?").run(req.params.id);
+    db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+    res.json({ success: true });
+  });
+
+  app.get("/api/users/:id/groups", authenticate, authorize(["admin"]), (req: any, res) => {
+    const groups = db.prepare("SELECT group_id FROM user_router_groups WHERE user_id = ?").all(req.params.id);
+    res.json(groups.map((g: any) => g.group_id));
+  });
+
+  app.put("/api/users/:id/groups", authenticate, authorize(["admin"]), (req: any, res) => {
+    const { groupIds } = req.body;
+    const userId = req.params.id;
+    
+    const tx = db.transaction(() => {
+      db.prepare("DELETE FROM user_router_groups WHERE user_id = ?").run(userId);
+      const insert = db.prepare("INSERT INTO user_router_groups (user_id, group_id) VALUES (?, ?)");
+      for (const groupId of groupIds) {
+        insert.run(userId, groupId);
+      }
+    });
+    
+    try {
+      tx();
+      res.json({ success: true });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // System Actions
+  app.post("/api/system/backup", authenticate, authorize(["admin"]), (req: any, res) => {
+    // Mock backup
+    setTimeout(() => res.json({ success: true, message: "Backup created successfully", timestamp: new Date().toISOString() }), 1000);
+  });
+
+  app.post("/api/system/restore", authenticate, authorize(["admin"]), (req: any, res) => {
+    // Mock restore
+    setTimeout(() => res.json({ success: true, message: "System restored successfully" }), 1500);
+  });
+
+  app.post("/api/system/restart", authenticate, authorize(["admin"]), (req: any, res) => {
+    // Mock restart
+    setTimeout(() => res.json({ success: true, message: "Services restarted successfully" }), 2000);
+  });
+
+  // VyOS API Proxy
+  app.post("/api/vyos/:routerId/:action", authenticate, authorize(["admin", "operator"]), async (req: any, res) => {
+    const { routerId, action } = req.params;
+    const { data } = req.body;
+
+    // Check if user has access to this router
+    const router: any = db.prepare(`
+      SELECT r.* 
+      FROM routers r
+      LEFT JOIN user_router_groups urg ON r.group_id = urg.group_id
+      WHERE r.id = ? AND r.tenant_id = ? AND (urg.user_id = ? OR ? = 'admin')
+    `).get(routerId, req.user.tenant, req.user.id, req.user.role);
+
+    if (!router) return res.status(404).json({ error: "Router not found or access denied" });
+
+    try {
+      const formData = new URLSearchParams();
+      formData.append("key", router.api_key);
+      
+      let vyosEndpoint = action;
+      if (action === 'show') vyosEndpoint = 'retrieve';
+      if (action === 'op') vyosEndpoint = 'op';
+      if (action === 'configure') vyosEndpoint = 'configure';
+      
+      formData.append("data", JSON.stringify(data));
+
+      const response = await axios.post(`${router.url}/${vyosEndpoint}`, formData, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        timeout: 15000,
+      });
+
+      db.prepare("INSERT INTO audit_logs (user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(req.user.id, `vyos_${action}`, routerId, JSON.stringify(data), req.clientIp);
+
+      res.json(response.data);
+    } catch (err: any) {
+      console.error("VyOS API Error:", err.message);
+      res.status(500).json({ 
+        error: "Failed to communicate with VyOS", 
+        details: err.message
+      });
+    }
+  });
+
+  // System Info
+  app.get("/api/system-info", authenticate, (req, res) => {
     res.json({
-      pipelineValue: totalPipeline.total || 0,
-      revenue: closedWon.total || 0,
-      totalLeads: leadCount.count,
-      activeCampaigns: activeCampaigns.count,
-      pipelineByStage: db.prepare("SELECT stage, COUNT(*) as count, SUM(value) as value FROM deals GROUP BY stage").all()
+      uptime: process.uptime(),
+      version: "v2.5.0-enterprise",
+      node_version: process.version,
+      memory: process.memoryUsage(),
+      platform: process.platform,
+      arch: process.arch
     });
   });
 
-  // AI Analysis Endpoint
-  app.post("/api/ai/analyze", authenticate, async (req: any, res) => {
-    const { leads, deals } = req.body;
-    
-    if (!process.env.GEMINI_API_KEY) {
-      return res.json({ 
-        analysis: "AI Analysis is currently in preview mode. Please configure your Gemini API key to enable live strategic insights." 
-      });
-    }
+  // Settings
+  app.get("/api/settings", authenticate, (req, res) => {
+    const settings = db.prepare("SELECT * FROM settings").all();
+    const settingsObj = settings.reduce((acc: any, s: any) => {
+      acc[s.key] = s.value === 'true' ? true : s.value === 'false' ? false : s.value;
+      return acc;
+    }, {});
+    res.json(settingsObj);
+  });
+
+  app.post("/api/settings", authenticate, authorize(["admin"]), (req, res) => {
+    const { key, value } = req.body;
+    db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, String(value));
+    res.json({ success: true });
+  });
+
+  // Status Check
+  app.post("/api/routers/:id/check", authenticate, async (req: any, res) => {
+    const router: any = db.prepare("SELECT * FROM routers WHERE id = ? AND tenant_id = ?").get(req.params.id, req.user.tenant);
+    if (!router) return res.status(404).json({ error: "Router not found" });
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Analyze this GTM data and provide a concise strategic recommendation (max 100 words). 
-        Leads: ${JSON.stringify(leads)}
-        Deals: ${JSON.stringify(deals)}`,
-        config: {
-          systemInstruction: "You are a world-class GTM strategist. Provide actionable, data-driven insights for enterprise sales teams."
-        }
+      const formData = new URLSearchParams();
+      formData.append("key", router.api_key);
+      formData.append("data", JSON.stringify({ op: "showConfig", path: [] }));
+
+      await axios.post(`${router.url}/retrieve`, formData, {
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        timeout: 5000,
       });
-      res.json({ analysis: response.text });
-    } catch (err: any) {
-      res.status(500).json({ error: "AI analysis failed", details: err.message });
+
+      db.prepare("UPDATE routers SET status = 'online', last_check = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
+      res.json({ status: 'online' });
+    } catch (err) {
+      db.prepare("UPDATE routers SET status = 'offline', last_check = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
+      res.json({ status: 'offline' });
     }
   });
 
-  // Vite middleware
+  // Audit Logs
+  app.get("/api/logs", authenticate, authorize(["admin", "operator"]), (req: any, res) => {
+    const logs = db.prepare(`
+      SELECT audit_logs.*, users.username, routers.name as router_name 
+      FROM audit_logs 
+      JOIN users ON audit_logs.user_id = users.id 
+      LEFT JOIN routers ON audit_logs.target_router_id = routers.id
+      ORDER BY timestamp DESC LIMIT 500
+    `).all();
+    res.json(logs);
+  });
+
+  // Vite middleware for development
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -214,7 +501,7 @@ async function startServer() {
 
   const PORT = 3000;
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Nexus GTM Server running on http://0.0.0.0:${PORT}`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
 }
 

@@ -38,18 +38,6 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  Cell
-} from 'recharts';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -184,7 +172,7 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Login State
+  const [loginForm, setLoginForm] = useState({ username: '', password: '' });
   const [searchQuery, setSearchQuery] = useState('');
 
   const filteredRouters = useMemo(() => {
@@ -351,12 +339,6 @@ export default function App() {
             onClick={() => setActiveTab('dashboard')} 
           />
           <NavItem 
-            icon={<Globe size={18} />} 
-            label="Network Map" 
-            active={activeTab === 'map'} 
-            onClick={() => setActiveTab('map')} 
-          />
-          <NavItem 
             icon={<Server size={18} />} 
             label="Edge Fleet" 
             active={activeTab === 'routers'} 
@@ -444,7 +426,6 @@ export default function App() {
         <div className="flex-1 overflow-y-auto p-8">
           <AnimatePresence mode="wait">
             {activeTab === 'dashboard' && <DashboardView routers={routers} logs={logs} />}
-            {activeTab === 'map' && <NetworkMapView routers={filteredRouters} />}
             {activeTab === 'routers' && !managingRouter && <RoutersView routers={filteredRouters} onRefresh={fetchRouters} token={token!} onManage={setManagingRouter} />}
             {activeTab === 'routers' && managingRouter && (
               <RouterManagementView 
@@ -684,121 +665,6 @@ function UserAdminView({ token, currentUser }: { token: string; currentUser: Use
   );
 }
 
-function NetworkMapView({ routers }: { routers: Router[] }) {
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="space-y-8"
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-bold text-zinc-900">Global Infrastructure Map</h3>
-          <p className="text-sm text-zinc-500">Real-time geographic distribution of edge nodes.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm">
-            <Layers size={14} /> Layer Settings
-          </Button>
-          <Button variant="secondary" size="sm">
-            <Globe size={14} /> 3D View
-          </Button>
-        </div>
-      </div>
-
-      <Card className="p-0 overflow-hidden bg-zinc-900 border-zinc-800 min-h-[600px] relative">
-        {/* Mock Map Background */}
-        <div className="absolute inset-0 opacity-20 pointer-events-none">
-          <svg width="100%" height="100%" viewBox="0 0 1000 600" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M150 100 Q 200 80 250 120 T 350 100 T 450 150 T 550 120 T 650 180 T 750 150 T 850 200" stroke="#334155" strokeWidth="1" fill="none" />
-            <path d="M100 300 Q 150 280 200 320 T 300 300 T 400 350 T 500 320 T 600 380 T 700 350 T 800 400" stroke="#334155" strokeWidth="1" fill="none" />
-            <circle cx="200" cy="150" r="2" fill="#475569" />
-            <circle cx="400" cy="250" r="2" fill="#475569" />
-            <circle cx="600" cy="350" r="2" fill="#475569" />
-            <circle cx="800" cy="450" r="2" fill="#475569" />
-          </svg>
-        </div>
-
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="relative w-full h-full p-12">
-            {routers.map((router, i) => {
-              // Mock coordinates
-              const x = 10 + (i * 25) % 80;
-              const y = 20 + (i * 15) % 60;
-              
-              return (
-                <motion.div 
-                  key={router.id}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="absolute cursor-pointer group"
-                  style={{ left: `${x}%`, top: `${y}%` }}
-                >
-                  <div className="relative">
-                    <div className={cn(
-                      "w-4 h-4 rounded-full border-2 border-white shadow-lg transition-transform group-hover:scale-125",
-                      router.status === 'online' ? "bg-emerald-500" : "bg-red-500"
-                    )} />
-                    {router.status === 'online' && (
-                      <div className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-20" />
-                    )}
-                    
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                      <div className="bg-white border border-zinc-200 rounded-xl p-3 shadow-xl min-w-[160px]">
-                        <p className="text-xs font-bold text-zinc-900">{router.name}</p>
-                        <p className="text-[10px] text-zinc-400 font-mono mb-2">{router.url}</p>
-                        <div className="flex items-center justify-between pt-2 border-t border-zinc-100">
-                          <span className="text-[10px] font-bold text-zinc-500 uppercase">Latency</span>
-                          <span className="text-[10px] font-bold text-emerald-600">24ms</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="absolute bottom-6 left-6 flex flex-col gap-2">
-          <div className="bg-zinc-800/80 backdrop-blur-md border border-zinc-700 p-4 rounded-2xl shadow-2xl">
-            <h4 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Map Legend</h4>
-            <div className="space-y-2">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider">Operational Node</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider">Node Offline</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-wider">Gateway Hub</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="absolute top-6 right-6">
-          <div className="bg-zinc-800/80 backdrop-blur-md border border-zinc-700 p-4 rounded-2xl shadow-2xl flex items-center gap-6">
-            <div className="text-center">
-              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Active Regions</p>
-              <p className="text-lg font-bold text-white">12</p>
-            </div>
-            <div className="w-px h-8 bg-zinc-700" />
-            <div className="text-center">
-              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Global Uptime</p>
-              <p className="text-lg font-bold text-emerald-400">99.98%</p>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </motion.div>
-  );
-}
-
 function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
   return (
     <button
@@ -831,27 +697,8 @@ function DashboardView({ routers, logs }: { routers: Router[]; logs: AuditLog[] 
     total: routers.length,
     online: routers.filter(r => r.status === 'online').length,
     offline: routers.filter(r => r.status === 'offline' || r.status === 'unknown').length,
-    recentActions: logs.length,
-    throughput: "4.2 Gbps",
-    activeSessions: 1240
+    recentActions: logs.length
   }), [routers, logs]);
-
-  const trafficData = useMemo(() => [
-    { time: '00:00', ingress: 400, egress: 240 },
-    { time: '04:00', ingress: 300, egress: 139 },
-    { time: '08:00', ingress: 200, egress: 980 },
-    { time: '12:00', ingress: 278, egress: 390 },
-    { time: '16:00', ingress: 189, egress: 480 },
-    { time: '20:00', ingress: 239, egress: 380 },
-    { time: '23:59', ingress: 349, egress: 430 },
-  ], []);
-
-  const healthData = useMemo(() => [
-    { name: 'CPU', value: 45, color: '#10b981' },
-    { name: 'RAM', value: 62, color: '#10b981' },
-    { name: 'Disk', value: 28, color: '#10b981' },
-    { name: 'Temp', value: 52, color: '#f59e0b' },
-  ], []);
 
   return (
     <motion.div 
@@ -862,137 +709,61 @@ function DashboardView({ routers, logs }: { routers: Router[]; logs: AuditLog[] 
     >
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         <StatCard 
-          label="Network Throughput" 
-          value={stats.throughput} 
-          trend="+12.5%" 
-          trendUp={true}
-          icon={<TrendingUp className="text-emerald-500" />} 
-        />
-        <StatCard 
-          label="Active Sessions" 
-          value={stats.activeSessions} 
-          trend="-2.4%" 
-          trendUp={false}
-          icon={<Globe className="text-blue-500" />} 
-        />
-        <StatCard 
-          label="Edge Nodes" 
-          value={`${stats.online}/${stats.total}`} 
-          subtext="Nodes Operational"
+          label="Total Edge Nodes" 
+          value={stats.total} 
           icon={<Server className="text-zinc-900" />} 
+        />
+        <StatCard 
+          label="Online Nodes" 
+          value={stats.online} 
+          icon={<CheckCircle2 className="text-emerald-500" />} 
+        />
+        <StatCard 
+          label="Offline Nodes" 
+          value={stats.offline} 
+          icon={<AlertCircle className="text-red-500" />} 
         />
         <StatCard 
           label="Security Events" 
           value={stats.recentActions} 
-          trend="Stable"
           icon={<ShieldCheck className="text-amber-500" />} 
         />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card title="Traffic Intelligence" className="lg:col-span-2" subtitle="Real-time ingress/egress analytics">
-          <div className="h-[300px] w-full mt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trafficData}>
-                <defs>
-                  <linearGradient id="colorIngress" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                  </linearGradient>
-                  <linearGradient id="colorEgress" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.1}/>
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                <XAxis 
-                  dataKey="time" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fill: '#94a3b8' }} 
-                />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 10, fill: '#94a3b8' }} 
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: '#fff', 
-                    border: '1px solid #e2e8f0', 
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                  }} 
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="ingress" 
-                  stroke="#10b981" 
-                  strokeWidth={2}
-                  fillOpacity={1} 
-                  fill="url(#colorIngress)" 
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="egress" 
-                  stroke="#3b82f6" 
-                  strokeWidth={2}
-                  fillOpacity={1} 
-                  fill="url(#colorEgress)" 
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex items-center gap-6 mt-4 border-t border-zinc-50 pt-4">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-emerald-500" />
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Ingress Traffic</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
-              <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Egress Traffic</span>
-            </div>
-          </div>
-        </Card>
-
-        <div className="space-y-8">
-          <Card title="Fleet Health Score" subtitle="Resource utilization across nodes">
-            <div className="h-[200px] w-full mt-4">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={healthData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis type="number" hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 12, fontWeight: 600, fill: '#475569' }} 
-                  />
-                  <Tooltip 
-                    cursor={{ fill: '#f8fafc' }}
-                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={16}>
-                    {healthData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-4 p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-zinc-900">Overall Status</span>
-                <span className="text-xs font-bold text-emerald-600">Optimal</span>
-              </div>
-              <div className="w-full bg-zinc-200 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full w-[92%]" />
-              </div>
+        <div className="lg:col-span-2">
+          <Card title="Active Edge Nodes">
+            <div className="space-y-3">
+              {routers.map(router => (
+                <div key={router.id} className="flex items-center justify-between p-3 border border-zinc-100 rounded-xl bg-white hover:shadow-sm transition-all">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-2.5 h-2.5 rounded-full ring-4 ring-offset-0",
+                      router.status === 'online' ? "bg-emerald-500 ring-emerald-500/10" : 
+                      router.status === 'offline' ? "bg-red-500 ring-red-500/10" : "bg-zinc-300 ring-zinc-300/10"
+                    )} />
+                    <div>
+                      <span className="text-sm font-bold text-zinc-900 block">{router.name}</span>
+                      <span className="text-[10px] font-mono text-zinc-400">{router.url}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest",
+                      router.status === 'online' ? "bg-emerald-50 text-emerald-600" : 
+                      router.status === 'offline' ? "bg-red-50 text-red-600" : "bg-zinc-50 text-zinc-400"
+                    )}>{router.status}</div>
+                  </div>
+                </div>
+              ))}
+              {routers.length === 0 && (
+                <div className="text-center py-8 text-zinc-400 text-sm">No routers connected</div>
+              )}
             </div>
           </Card>
+        </div>
 
+        <div className="space-y-8">
           <Card title="Quick Actions" subtitle="Common administrative tasks">
             <div className="grid grid-cols-2 gap-3">
               <Button variant="secondary" size="sm" className="flex-col py-4 h-auto gap-3 rounded-2xl">
@@ -1013,69 +784,30 @@ function DashboardView({ routers, logs }: { routers: Router[]; logs: AuditLog[] 
               </Button>
             </div>
           </Card>
+
+          <Card title="Recent Security Audit">
+            <div className="space-y-4">
+              {logs.slice(0, 5).map(log => (
+                <div key={log.id} className="flex items-start gap-4 p-3 rounded-xl hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-100">
+                  <div className="mt-1 w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500">
+                    <TerminalIcon size={14} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-zinc-900">
+                      <span className="font-bold">{log.username}</span> <span className="text-zinc-500">executed</span> <code className="bg-zinc-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-zinc-700">{log.action}</code>
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{log.router_name || 'System'}</p>
+                      <span className="text-zinc-300">•</span>
+                      <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{new Date(log.timestamp).toLocaleTimeString()}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {logs.length === 0 && <p className="text-center py-4 text-zinc-400 text-xs">No recent activity</p>}
+            </div>
+          </Card>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card title="Recent Security Audit">
-          <div className="space-y-4">
-            {logs.slice(0, 5).map(log => (
-              <div key={log.id} className="flex items-start gap-4 p-3 rounded-xl hover:bg-zinc-50 transition-colors border border-transparent hover:border-zinc-100">
-                <div className="mt-1 w-8 h-8 rounded-lg bg-zinc-100 flex items-center justify-center text-zinc-500">
-                  <Terminal size={14} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-zinc-900">
-                    <span className="font-bold">{log.username}</span> <span className="text-zinc-500">executed</span> <code className="bg-zinc-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-zinc-700">{log.action}</code>
-                  </p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{log.router_name || 'System'}</p>
-                    <span className="text-zinc-300">•</span>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{new Date(log.timestamp).toLocaleTimeString()}</p>
-                  </div>
-                </div>
-                <ArrowUpRight size={14} className="text-zinc-300" />
-              </div>
-            ))}
-            {logs.length === 0 && <p className="text-center py-4 text-zinc-400 text-xs">No recent activity</p>}
-            <Button variant="ghost" className="w-full text-xs text-zinc-500 hover:text-zinc-900">View Full Audit Trail</Button>
-          </div>
-        </Card>
-
-        <Card title="Active Edge Nodes">
-          <div className="space-y-3">
-            {routers.map(router => (
-              <div key={router.id} className="flex items-center justify-between p-3 border border-zinc-100 rounded-xl bg-white hover:shadow-sm transition-all">
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-2.5 h-2.5 rounded-full ring-4 ring-offset-0",
-                    router.status === 'online' ? "bg-emerald-500 ring-emerald-500/10" : 
-                    router.status === 'offline' ? "bg-red-500 ring-red-500/10" : "bg-zinc-300 ring-zinc-300/10"
-                  )} />
-                  <div>
-                    <span className="text-sm font-bold text-zinc-900 block">{router.name}</span>
-                    <span className="text-[10px] font-mono text-zinc-400">{router.url}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right hidden sm:block">
-                    <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Load</p>
-                    <p className="text-xs font-bold text-zinc-900">{router.status === 'online' ? '18%' : '--'}</p>
-                  </div>
-                  <div className={cn(
-                    "px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-widest",
-                    router.status === 'online' ? "bg-emerald-50 text-emerald-600" : 
-                    router.status === 'offline' ? "bg-red-50 text-red-600" : "bg-zinc-50 text-zinc-400"
-                  )}>{router.status}</div>
-                </div>
-              </div>
-            ))}
-            {routers.length === 0 && (
-              <div className="text-center py-8 text-zinc-400 text-sm">No routers connected</div>
-            )}
-            <Button variant="ghost" className="w-full text-xs text-zinc-500 hover:text-zinc-900">Manage Fleet</Button>
-          </div>
-        </Card>
       </div>
     </motion.div>
   );
