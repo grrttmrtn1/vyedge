@@ -1,0 +1,5 @@
+{
+  "name": "Vy Edge Manager",
+  "description": "Enterprise-grade edge network management platform for VyOS with real-time monitoring, centralized configuration, and advanced security controls.",
+  "requestFramePermissions": []
+}
