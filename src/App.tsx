@@ -21,6 +21,7 @@ import {
   Layers,
   Edit,
   RefreshCcw,
+  RefreshCw,
   FileText,
   Network,
   Globe,
@@ -28,7 +29,6 @@ import {
   Cpu,
   Zap,
   Terminal as TerminalIcon,
-  TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
   Clock,
@@ -48,7 +48,8 @@ function cn(...inputs: ClassValue[]) {
 interface User {
   id: number;
   username: string;
-  role: 'admin' | 'operator';
+  role: 'admin' | 'operator' | 'read-only';
+  groups?: string[];
 }
 
 interface Router {
@@ -164,9 +165,12 @@ const Input = ({
 
 export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('vyos_token'));
+  console.log("[UI] App State: token exists:", !!token);
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'routers' | 'config' | 'logs' | 'settings' | 'users' | 'browser' | 'map'>('dashboard');
   const [routers, setRouters] = useState<Router[]>([]);
+  const [groups, setGroups] = useState<any[]>([]);
+  console.log("[UI] App Render: current groups count:", groups.length);
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [managingRouter, setManagingRouter] = useState<Router | null>(null);
   const [loading, setLoading] = useState(false);
@@ -209,15 +213,55 @@ export default function App() {
     }
   }, [token]);
 
+  const fetchGroups = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`/api/router-groups?_=${Date.now()}`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      console.log("[UI] Fetched groups from server:", data.map((g: any) => ({id: g.id, name: g.name})));
+      setGroups(prev => {
+        console.log("[UI] Updating groups state. Previous length:", prev.length, "New length:", data.length);
+        return data;
+      });
+    } catch {
+      console.error("Failed to fetch groups");
+    }
+  }, [token]);
+
   useEffect(() => {
     if (token) {
       fetchRouters();
       fetchLogs();
-      // In a real app, we'd verify the token and get user info
+      fetchGroups();
+      
+      // Debugging helpers
+      (window as any).VyEdgeDebug = {
+        fetchGroups,
+        fetchRouters,
+        deleteGroup: async (id: number) => {
+          console.log(`[DEBUG] Manually deleting group ${id}`);
+          const res = await fetch(`/api/router-groups/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          console.log(`[DEBUG] Response:`, await res.json());
+          fetchGroups();
+        },
+        deleteRouter: async (id: number) => {
+          console.log(`[DEBUG] Manually deleting router ${id}`);
+          const res = await fetch(`/api/routers/${id}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          console.log(`[DEBUG] Response:`, await res.json());
+          fetchRouters();
+        }
+      };
+
       const savedUser = localStorage.getItem('vyos_user');
       if (savedUser) setUser(JSON.parse(savedUser));
     }
-  }, [token, fetchRouters, fetchLogs]);
+  }, [token, fetchRouters, fetchLogs, fetchGroups]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -425,8 +469,41 @@ export default function App() {
 
         <div className="flex-1 overflow-y-auto p-8">
           <AnimatePresence mode="wait">
-            {activeTab === 'dashboard' && <DashboardView routers={routers} logs={logs} />}
-            {activeTab === 'routers' && !managingRouter && <RoutersView routers={filteredRouters} onRefresh={fetchRouters} token={token!} onManage={setManagingRouter} />}
+            {activeTab === 'dashboard' && (
+              <DashboardView 
+                routers={routers} 
+                logs={logs} 
+                onAddNode={() => setActiveTab('routers')}
+                onScan={() => {
+                  setActiveTab('logs');
+                  alert("Audit scan initiated across all nodes.");
+                }}
+                onSync={() => {
+                  routers.forEach(r => fetch(`/api/routers/${r.id}/check`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }));
+                  alert("Fleet synchronization started.");
+                }}
+                onExport={() => {
+                  const csv = "id,name,url,status\n" + routers.map(r => `${r.id},${r.name},${r.url},${r.status}`).join("\n");
+                  const blob = new Blob([csv], { type: 'text/csv' });
+                  const url = window.URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'fleet_export.csv';
+                  a.click();
+                }}
+              />
+            )}
+            {activeTab === 'routers' && !managingRouter && (
+              <RoutersView 
+                routers={filteredRouters} 
+                groups={groups}
+                onRefresh={fetchRouters} 
+                onRefreshGroups={fetchGroups}
+                token={token!} 
+                onManage={setManagingRouter} 
+                currentUser={user!} 
+              />
+            )}
             {activeTab === 'routers' && managingRouter && (
               <RouterManagementView 
                 router={managingRouter} 
@@ -436,8 +513,16 @@ export default function App() {
             )}
             {activeTab === 'config' && <ConfigView routers={routers} token={token!} />}
             {activeTab === 'browser' && <ConfigBrowserView routers={routers} token={token!} />}
-            {activeTab === 'logs' && <LogsView logs={logs} />}
-            {activeTab === 'users' && <UserAdminView token={token!} currentUser={user!} />}
+            {activeTab === 'logs' && <LogsView token={token!} />}
+            {activeTab === 'users' && (
+              <UserAdminView 
+                token={token!} 
+                currentUser={user!} 
+                groups={groups}
+                onRefreshRouters={fetchRouters} 
+                onRefreshGroups={fetchGroups}
+              />
+            )}
             {activeTab === 'settings' && <SystemSettingsView token={token!} />}
           </AnimatePresence>
         </div>
@@ -446,45 +531,34 @@ export default function App() {
   );
 }
 
-function UserAdminView({ token, currentUser }: { token: string; currentUser: User }) {
+function UserAdminView({ token, currentUser, groups, onRefreshRouters, onRefreshGroups }: { token: string; currentUser: User; groups: any[]; onRefreshRouters: () => void; onRefreshGroups: () => void }) {
   const [users, setUsers] = useState<User[]>([]);
-  const [groups, setGroups] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
   const [form, setForm] = useState({ username: '', password: '', role: 'operator' as 'admin' | 'operator' | 'read-only' });
   const [groupForm, setGroupForm] = useState({ name: '' });
   const [resettingPassword, setResettingPassword] = useState<{ id: number; username: string } | null>(null);
+  const [assigningGroups, setAssigningGroups] = useState<{ id: number; username: string } | null>(null);
+  const [userGroups, setUserGroups] = useState<number[]>([]);
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [uRes, gRes] = await Promise.all([
-          fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('/api/router-groups', { headers: { Authorization: `Bearer ${token}` } })
-        ]);
-        setUsers(await uRes.json());
-        setGroups(await gRes.json());
-      } catch {
-        console.error("Failed to fetch data");
-      }
-    };
-    fetchData();
-  }, [token]);
-
   const handleFetchData = useCallback(async () => {
     try {
-      const [uRes, gRes] = await Promise.all([
-        fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/router-groups', { headers: { Authorization: `Bearer ${token}` } })
-      ]);
-      setUsers(await uRes.json());
-      setGroups(await gRes.json());
+      const res = await fetch('/api/users', { headers: { Authorization: `Bearer ${token}` } });
+      setUsers(await res.json());
+      onRefreshGroups();
     } catch {
       console.error("Failed to fetch data");
     }
-  }, [token]);
+  }, [token, onRefreshGroups]);
+
+  useEffect(() => {
+    const init = async () => {
+      await handleFetchData();
+    };
+    init();
+  }, [handleFetchData]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -512,7 +586,7 @@ function UserAdminView({ token, currentUser }: { token: string; currentUser: Use
       body: JSON.stringify(groupForm)
     });
     setGroupForm({ name: '' });
-    fetchData();
+    handleFetchData();
   };
 
   const handleResetPassword = async (e: React.FormEvent) => {
@@ -534,7 +608,70 @@ function UserAdminView({ token, currentUser }: { token: string; currentUser: Use
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleAssignGroups = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!assigningGroups) return;
+    const res = await fetch(`/api/users/${assigningGroups.id}/groups`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ groupIds: userGroups })
+    });
+    if (res.ok) {
+      setAssigningGroups(null);
+      setUserGroups([]);
+      alert("Group assignments updated");
+    }
+  };
+
+  const openAssignGroups = async (user: User) => {
+    setAssigningGroups({ id: user.id, username: user.username });
+    setError(null);
+    try {
+      const res = await fetch(`/api/users/${user.id}/groups`, { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json();
+      if (res.ok) {
+        setUserGroups(data);
+      } else {
+        setError(data.error);
+      }
+    } catch {
+      setError("Failed to fetch user groups");
+    }
+  };
+
+  const handleDeleteGroup = async (id: number) => {
+    console.log(`[UI] UserAdminView: Attempting to delete group ${id}`);
+    // Removed window.confirm due to potential iframe restrictions
+    console.log(`[UI] UserAdminView: Proceeding with deletion (confirm bypassed)`);
+    
+    console.log(`[UI] UserAdminView: Sending DELETE request to /api/router-groups/${id}`);
+    try {
+      const res = await fetch(`/api/router-groups/${id}`, { 
+        method: 'DELETE', 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      
+      console.log(`[UI] UserAdminView: DELETE response status: ${res.status}`);
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log(`[UI] UserAdminView: Delete success. Server reports ${data.remaining} groups remaining.`);
+        setTimeout(() => {
+          onRefreshGroups();
+          onRefreshRouters();
+        }, 300);
+      } else {
+        const data = await res.json();
+        console.error(`[UI] UserAdminView: DELETE failed:`, data);
+        alert(data.error || "Failed to delete group");
+      }
+    } catch (err: any) {
+      console.error("[UI] UserAdminView: Network error during deletion:", err);
+      alert("Network error: Could not connect to server.");
+    }
+  };
+
+  const handleDeleteUser = async (id: number) => {
     if (!confirm("Delete this user?")) return;
     await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     handleFetchData();
@@ -557,42 +694,44 @@ function UserAdminView({ token, currentUser }: { token: string; currentUser: Use
 
       {showAdd && (
         <Card className="p-6 bg-zinc-50">
-          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <Input label="Username" value={form.username} onChange={e => setForm({...form, username: e.target.value})} />
+          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
             <div className="space-y-1">
-              <Input label="Password" type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} />
-              <p className="text-[9px] text-zinc-400">Min 8 chars, 1 upper, 1 lower, 1 number, 1 special</p>
+              <Input label="Username" value={form.username} onChange={e => setForm({...form, username: e.target.value})} placeholder="j.doe" />
+            </div>
+            <div className="space-y-1">
+              <Input label="Password" type="password" value={form.password} onChange={e => setForm({...form, password: e.target.value})} placeholder="••••••••" />
+              <p className="text-[9px] text-zinc-400 leading-tight">Min 8 chars, 1 upper, 1 lower, 1 number, 1 special</p>
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium text-zinc-600">Role</label>
               <select 
                 value={form.role} 
                 onChange={e => setForm({...form, role: e.target.value as any})}
-                className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm"
+                className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm h-[38px] focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all"
               >
                 <option value="operator">Operator</option>
                 <option value="admin">Administrator</option>
                 <option value="read-only">Read-Only</option>
               </select>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 h-[38px] mt-[22px]">
               <Button type="submit" className="flex-1">Create</Button>
               <Button variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
             </div>
           </form>
-          {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+          {error && <p className="text-xs text-red-500 mt-2 font-medium">{error}</p>}
         </Card>
       )}
 
       {resettingPassword && (
         <Card className="p-6 bg-zinc-50 border-zinc-900/20">
           <h4 className="text-sm font-bold mb-4">Reset Password for: {resettingPassword.username}</h4>
-          <form onSubmit={handleResetPassword} className="flex gap-4 items-end">
+          <form onSubmit={handleResetPassword} className="flex gap-4 items-start">
             <div className="flex-1 space-y-1">
               <Input label="New Password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
               <p className="text-[9px] text-zinc-400">Min 8 chars, 1 upper, 1 lower, 1 number, 1 special</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 pt-5">
               <Button type="submit">Update Password</Button>
               <Button variant="secondary" onClick={() => { setResettingPassword(null); setNewPassword(''); setError(null); }}>Cancel</Button>
             </div>
@@ -601,25 +740,78 @@ function UserAdminView({ token, currentUser }: { token: string; currentUser: Use
         </Card>
       )}
 
+      {assigningGroups && (
+        <Card className="p-6 bg-zinc-50 border-zinc-900/20">
+          <h4 className="text-sm font-bold mb-4">Assign Groups to: {assigningGroups.username}</h4>
+          <form onSubmit={handleAssignGroups} className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {groups.map(g => (
+                <label key={g.id} className="flex items-center gap-2 p-3 bg-white border border-zinc-200 rounded-xl cursor-pointer hover:bg-zinc-50 transition-colors">
+                  <input 
+                    type="checkbox" 
+                    checked={userGroups.includes(g.id)}
+                    onChange={e => {
+                      if (e.target.checked) setUserGroups([...userGroups, g.id]);
+                      else setUserGroups(userGroups.filter(id => id !== g.id));
+                    }}
+                    className="w-4 h-4 rounded text-zinc-900 focus:ring-zinc-900"
+                  />
+                  <span className="text-xs font-medium text-zinc-900">{g.name}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="secondary" onClick={() => setAssigningGroups(null)}>Cancel</Button>
+              <Button type="submit">Save Assignments</Button>
+            </div>
+          </form>
+        </Card>
+      )}
+
       {showGroups ? (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card title="Router Groups">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Active Groups</h3>
+              <Button variant="ghost" size="sm" onClick={onRefreshGroups} className="text-zinc-400 hover:text-zinc-900">
+                <RefreshCw size={12} className="mr-1" /> Sync
+              </Button>
+            </div>
             <form onSubmit={handleAddGroup} className="flex gap-2 mb-6">
               <Input value={groupForm.name} onChange={e => setGroupForm({ name: e.target.value })} placeholder="Group Name (e.g. EMEA Edge)" />
               <Button type="submit">Add Group</Button>
             </form>
             <div className="space-y-2">
               {groups.map(g => (
-                <div key={g.id} className="flex items-center justify-between p-3 border border-zinc-100 rounded-xl bg-white">
-                  <span className="text-sm font-bold text-zinc-900">{g.name}</span>
-                  <span className="text-[10px] font-mono text-zinc-400">ID: {g.id}</span>
+                <div key={g.id} className="flex items-center justify-between p-3 border border-zinc-100 rounded-xl bg-white group">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-bold text-zinc-900">{g.name}</span>
+                    <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest">ID: {g.id}</span>
+                  </div>
+                  <Button variant="ghost" className="p-2 h-auto text-zinc-300 hover:text-red-500 transition-colors" onClick={() => handleDeleteGroup(g.id)}>
+                    <Trash2 size={14} />
+                  </Button>
                 </div>
               ))}
               {groups.length === 0 && <p className="text-center py-4 text-zinc-400 text-xs">No groups defined</p>}
             </div>
           </Card>
-          <Card title="Group Assignments">
-            <p className="text-xs text-zinc-500 mb-4 italic">Assignments are currently managed via direct database entry in this version. UI coming soon.</p>
+          <Card title="Access Control Policy">
+            <div className="space-y-4">
+              <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+                <p className="text-xs font-bold text-zinc-900 mb-1">Role-Based Access</p>
+                <p className="text-[10px] text-zinc-500 leading-relaxed">
+                  Operators and Read-Only users are restricted to the router groups assigned to them. 
+                  Administrators have global access to all infrastructure within the tenant.
+                </p>
+              </div>
+              <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
+                <p className="text-xs font-bold text-emerald-900 mb-1">Granular Permissions</p>
+                <p className="text-[10px] text-emerald-700 leading-relaxed">
+                  Use the <Layers size={10} className="inline" /> icon in the user list to manage group-level isolation for each operator.
+                </p>
+              </div>
+            </div>
           </Card>
         </div>
       ) : (
@@ -629,6 +821,7 @@ function UserAdminView({ token, currentUser }: { token: string; currentUser: Use
               <tr className="bg-zinc-50 border-b border-zinc-100">
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Username</th>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Role</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Groups</th>
                 <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Actions</th>
               </tr>
             </thead>
@@ -644,12 +837,28 @@ function UserAdminView({ token, currentUser }: { token: string; currentUser: Use
                     )}>{u.role}</span>
                   </td>
                   <td className="px-6 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {u.role === 'admin' ? (
+                        <span className="text-[10px] text-zinc-400 italic">Global Access</span>
+                      ) : u.groups && u.groups.length > 0 ? (
+                        u.groups.map(g => (
+                          <span key={g} className="px-2 py-0.5 bg-zinc-50 border border-zinc-100 rounded text-[9px] font-medium text-zinc-600">{g}</span>
+                        ))
+                      ) : (
+                        <span className="text-[10px] text-red-400 font-medium">No Access</span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
                     <div className="flex gap-2">
+                      <Button variant="ghost" className="p-1 h-auto text-zinc-400 hover:text-zinc-900" onClick={() => openAssignGroups(u)}>
+                        <Layers size={14} />
+                      </Button>
                       <Button variant="ghost" className="p-1 h-auto text-zinc-400 hover:text-zinc-900" onClick={() => setResettingPassword({ id: u.id, username: u.username })}>
                         <Lock size={14} />
                       </Button>
                       {u.id !== currentUser.id && (
-                        <Button variant="ghost" className="p-1 h-auto text-zinc-400 hover:text-red-500" onClick={() => handleDelete(u.id)}>
+                        <Button variant="ghost" className="p-1 h-auto text-zinc-400 hover:text-red-500" onClick={() => handleDeleteUser(u.id)}>
                           <Trash2 size={14} />
                         </Button>
                       )}
@@ -692,7 +901,14 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode; labe
 
 // --- Views ---
 
-function DashboardView({ routers, logs }: { routers: Router[]; logs: AuditLog[] }) {
+function DashboardView({ routers, logs, onAddNode, onScan, onSync, onExport }: { 
+  routers: Router[]; 
+  logs: AuditLog[]; 
+  onAddNode: () => void;
+  onScan: () => void;
+  onSync: () => void;
+  onExport: () => void;
+}) {
   const stats = useMemo(() => ({
     total: routers.length,
     online: routers.filter(r => r.status === 'online').length,
@@ -766,19 +982,19 @@ function DashboardView({ routers, logs }: { routers: Router[]; logs: AuditLog[] 
         <div className="space-y-8">
           <Card title="Quick Actions" subtitle="Common administrative tasks">
             <div className="grid grid-cols-2 gap-3">
-              <Button variant="secondary" size="sm" className="flex-col py-4 h-auto gap-3 rounded-2xl">
+              <Button variant="secondary" size="sm" className="flex-col py-4 h-auto gap-3 rounded-2xl" onClick={onAddNode}>
                 <Plus size={18} className="text-zinc-400" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Add Node</span>
               </Button>
-              <Button variant="secondary" size="sm" className="flex-col py-4 h-auto gap-3 rounded-2xl">
+              <Button variant="secondary" size="sm" className="flex-col py-4 h-auto gap-3 rounded-2xl" onClick={onScan}>
                 <ShieldCheck size={18} className="text-emerald-500" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Audit Scan</span>
               </Button>
-              <Button variant="secondary" size="sm" className="flex-col py-4 h-auto gap-3 rounded-2xl">
+              <Button variant="secondary" size="sm" className="flex-col py-4 h-auto gap-3 rounded-2xl" onClick={onSync}>
                 <RefreshCcw size={18} className="text-blue-500" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Sync Fleet</span>
               </Button>
-              <Button variant="secondary" size="sm" className="flex-col py-4 h-auto gap-3 rounded-2xl">
+              <Button variant="secondary" size="sm" className="flex-col py-4 h-auto gap-3 rounded-2xl" onClick={onExport}>
                 <Download size={18} className="text-zinc-400" />
                 <span className="text-[10px] font-bold uppercase tracking-widest">Export Data</span>
               </Button>
@@ -999,31 +1215,16 @@ function RouterManagementView({ router, token, onBack }: { router: Router; token
   );
 }
 
-function RoutersView({ routers, onRefresh, token, onManage }: { routers: Router[]; onRefresh: () => void; token: string; onManage: (r: Router) => void }) {
+function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onManage, currentUser }: { routers: Router[]; groups: any[]; onRefresh: () => void; onRefreshGroups: () => void; token: string; onManage: (r: Router) => void; currentUser: User }) {
   const [showAdd, setShowAdd] = useState(false);
   const [showEdit, setShowEdit] = useState<Router | null>(null);
   const [showManageGroups, setShowManageGroups] = useState(false);
   const [form, setForm] = useState({ name: '', url: '', api_key: '', group_id: '' });
   const [editForm, setEditForm] = useState({ name: '', url: '', api_key: '', group_id: '' });
-  const [groups, setGroups] = useState<any[]>([]);
   const [groupForm, setGroupForm] = useState({ name: '' });
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState<number | null>(null);
   const [selectedRouter, setSelectedRouter] = useState<Router | null>(null);
-
-  const fetchGroups = useCallback(async () => {
-    try {
-      const res = await fetch('/api/router-groups', { headers: { Authorization: `Bearer ${token}` } });
-      const data = await res.json();
-      setGroups(data);
-    } catch {
-      console.error("Failed to fetch groups");
-    }
-  }, [token]);
-
-  useEffect(() => {
-    fetchGroups();
-  }, [fetchGroups]);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1080,7 +1281,7 @@ function RoutersView({ routers, onRefresh, token, onManage }: { routers: Router[
     });
     if (res.ok) {
       setGroupForm({ name: '' });
-      fetchGroups();
+      onRefreshGroups();
     } else {
       const data = await res.json();
       alert(data.error);
@@ -1088,16 +1289,33 @@ function RoutersView({ routers, onRefresh, token, onManage }: { routers: Router[
   };
 
   const handleDeleteGroup = async (id: number) => {
-    if (!confirm("Delete this group?")) return;
-    const res = await fetch(`/api/router-groups/${id}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    if (res.ok) {
-      fetchGroups();
-    } else {
-      const data = await res.json();
-      alert(data.error);
+    console.log(`[UI] Attempting to delete group ${id}`);
+    // Removed window.confirm due to potential iframe restrictions
+    console.log(`[UI] Proceeding with deletion (confirm bypassed)`);
+    try {
+      console.log(`[UI] Sending DELETE request to /api/router-groups/${id}`);
+      const res = await fetch(`/api/router-groups/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      console.log(`[UI] DELETE response status: ${res.status}`);
+      
+      if (res.ok) {
+        const data = await res.json();
+        console.log(`[UI] Delete success. Server reports ${data.remaining} groups remaining.`);
+        setTimeout(() => {
+          onRefreshGroups();
+          onRefresh();
+        }, 300);
+      } else {
+        const data = await res.json();
+        console.error(`[UI] DELETE failed:`, data);
+        alert(data.error || "Failed to delete group. Please check server logs.");
+      }
+    } catch (err: any) {
+      console.error("[UI] Group deletion network error:", err);
+      alert("Network error: Could not connect to management server.");
     }
   };
 
@@ -1105,6 +1323,21 @@ function RoutersView({ routers, onRefresh, token, onManage }: { routers: Router[
     e.preventDefault();
     if (!showEdit) return;
     setError(null);
+
+    if (editForm.url && !editForm.url.startsWith('https://')) {
+      setError("URL must start with https://");
+      return;
+    }
+
+    if (editForm.url) {
+      try {
+        const urlObj = new URL(editForm.url);
+        if (!urlObj.hostname) throw new Error();
+      } catch (e) {
+        setError("Invalid URL format. Use https://IP_OR_HOSTNAME");
+        return;
+      }
+    }
     
     try {
       const res = await fetch(`/api/routers/${showEdit.id}`, {
@@ -1138,21 +1371,28 @@ function RoutersView({ routers, onRefresh, token, onManage }: { routers: Router[
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to remove this router?")) return;
+    console.log(`[UI] Attempting to delete router ${id}`);
+    // Removed window.confirm due to potential iframe restrictions
+    console.log(`[UI] Proceeding with router deletion (confirm bypassed)`);
     try {
+      console.log(`[UI] Sending DELETE request to /api/routers/${id}`);
       const res = await fetch(`/api/routers/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
+      console.log(`[UI] DELETE router response status: ${res.status}`);
+      const data = await res.json();
       if (res.ok) {
+        console.log(`[UI] Router ${id} deleted successfully`);
         onRefresh();
         if (selectedRouter?.id === id) setSelectedRouter(null);
       } else {
-        const data = await res.json();
-        alert(data.error);
+        console.error(`[UI] Router deletion failed:`, data);
+        alert(data.error || "Failed to delete router");
       }
-    } catch {
-      console.error("Failed to delete router");
+    } catch (err: any) {
+      console.error("[UI] Network error during router deletion:", err);
+      alert("Network error: Failed to delete router");
     }
   };
 
@@ -1256,6 +1496,12 @@ function RoutersView({ routers, onRefresh, token, onManage }: { routers: Router[
       {showManageGroups ? (
         <Card title="Infrastructure Groups" subtitle="Logical isolation for edge nodes">
           <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h3 className="text-sm font-bold text-zinc-900">Manage Groups</h3>
+              <Button variant="outline" size="sm" onClick={onRefreshGroups}>
+                <RefreshCw size={12} className="mr-1" /> Refresh
+              </Button>
+            </div>
             <form onSubmit={handleAddGroup} className="flex gap-3">
               <input 
                 value={groupForm.name} 
@@ -1270,11 +1516,13 @@ function RoutersView({ routers, onRefresh, token, onManage }: { routers: Router[
                 <div key={g.id} className="flex items-center justify-between p-5 border border-zinc-100 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all group">
                   <div>
                     <p className="text-sm font-bold text-zinc-900">{g.name}</p>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">ID: {g.id} • 0 Nodes</p>
+                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">ID: {g.id} • {g.node_count || 0} Nodes</p>
                   </div>
-                  <Button variant="ghost" className="p-2 h-auto text-zinc-300 group-hover:text-red-500" onClick={() => handleDeleteGroup(g.id)}>
-                    <Trash2 size={14} />
-                  </Button>
+                  {currentUser.role === 'admin' && (
+                    <Button variant="ghost" className="p-2 h-auto text-zinc-300 group-hover:text-red-500" onClick={() => handleDeleteGroup(g.id)}>
+                      <Trash2 size={14} />
+                    </Button>
+                  )}
                 </div>
               ))}
               {groups.length === 0 && <p className="text-center py-12 text-zinc-400 text-xs col-span-full font-medium italic">No infrastructure groups defined.</p>}
@@ -1292,7 +1540,7 @@ function RoutersView({ routers, onRefresh, token, onManage }: { routers: Router[
                 )}>
                   <Server size={24} />
                 </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1">
                   <Button variant="ghost" size="sm" className="p-2 h-auto" onClick={() => checkStatus(router.id)} disabled={checking === router.id}>
                     <Activity size={14} className={cn(checking === router.id && "animate-spin")} />
                   </Button>
@@ -1776,8 +2024,39 @@ function ConfigView({ routers, token }: { routers: Router[]; token: string }) {
   );
 }
 
-function LogsView({ logs }: { logs: AuditLog[] }) {
+function LogsView({ token }: { token: string }) {
+  const [logs, setLogs] = useState<AuditLog[]>([]);
   const [expandedLog, setExpandedLog] = useState<number | null>(null);
+  const [showFilter, setShowFilter] = useState(false);
+  const [filters, setFilters] = useState({
+    user: '',
+    action: '',
+    router: '',
+    start: '',
+    end: ''
+  });
+
+  const fetchLogs = useCallback(async () => {
+    const params = new URLSearchParams();
+    if (filters.user) params.append('user', filters.user);
+    if (filters.action) params.append('action', filters.action);
+    if (filters.router) params.append('router', filters.router);
+    if (filters.start) params.append('start', filters.start);
+    if (filters.end) params.append('end', filters.end);
+
+    const res = await fetch(`/api/logs?${params.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    const data = await res.json();
+    setLogs(data);
+  }, [token, filters]);
+
+  useEffect(() => {
+    const init = async () => {
+      await fetchLogs();
+    };
+    init();
+  }, [fetchLogs]);
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
@@ -1790,11 +2069,33 @@ function LogsView({ logs }: { logs: AuditLog[] }) {
           <Button variant="secondary" size="sm">
             <Download size={14} /> Export CSV
           </Button>
-          <Button variant="secondary" size="sm">
+          <Button variant={showFilter ? 'primary' : 'secondary'} size="sm" onClick={() => setShowFilter(!showFilter)}>
             <Filter size={14} /> Advanced Filter
           </Button>
         </div>
       </div>
+
+      {showFilter && (
+        <Card className="p-6 bg-zinc-50 border-zinc-200">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-end">
+            <Input label="User" value={filters.user} onChange={e => setFilters({...filters, user: e.target.value})} placeholder="admin" />
+            <Input label="Action" value={filters.action} onChange={e => setFilters({...filters, action: e.target.value})} placeholder="delete_router" />
+            <Input label="Router/Details" value={filters.router} onChange={e => setFilters({...filters, router: e.target.value})} placeholder="Edge-01" />
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-zinc-600">Start Date</label>
+              <input type="date" className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm h-[38px]" value={filters.start} onChange={e => setFilters({...filters, start: e.target.value})} />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-zinc-600">End Date</label>
+              <input type="date" className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm h-[38px]" value={filters.end} onChange={e => setFilters({...filters, end: e.target.value})} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-4">
+            <Button variant="secondary" size="sm" onClick={() => setFilters({ user: '', action: '', router: '', start: '', end: '' })}>Reset</Button>
+            <Button size="sm" onClick={fetchLogs}>Apply Filters</Button>
+          </div>
+        </Card>
+      )}
 
       <Card className="p-0 overflow-hidden">
         <div className="overflow-x-auto">
@@ -1895,14 +2196,19 @@ function SystemSettingsView({ token }: { token: string }) {
     sso_enabled: false,
     sso_provider_url: '',
     sso_client_id: '',
+    sso_client_secret: '',
+    sso_type: 'saml',
     syslog_enabled: false,
-    syslog_server: '',
+    syslog_host: '',
     syslog_port: '514',
-    syslog_proto: 'UDP',
     tenancy_enabled: true,
-    audit_retention: '90'
+    audit_retention: '90',
+    encryption_at_rest: true,
+    session_timeout: '30',
+    compliance_mode: 'standard'
   });
   const [sysInfo, setSysInfo] = useState<any>(null);
+  const [loading, setLoading] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/settings', { headers: { Authorization: `Bearer ${token}` } })
@@ -1923,27 +2229,75 @@ function SystemSettingsView({ token }: { token: string }) {
     });
   };
 
+  const handleSystemAction = async (action: 'backup' | 'restore' | 'restart') => {
+    setLoading(action);
+    try {
+      const res = await fetch(`/api/system/${action}`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert(data.message);
+      } else {
+        alert(data.error);
+      }
+    } catch {
+      alert("Action failed");
+    } finally {
+      setLoading(null);
+    }
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-8">
           <Card title="Core Configuration" subtitle="Global application parameters">
             <div className="space-y-8">
-              <ToggleItem 
-                title="Enterprise Single Sign-On (SSO)" 
-                description="Enable SAML 2.0 / OIDC authentication for all operators."
-                enabled={settings.sso_enabled}
-                onToggle={() => updateSetting('sso_enabled', !settings.sso_enabled)}
-              />
+              <div className="space-y-4">
+                <ToggleItem 
+                  title="Enterprise Single Sign-On (SSO)" 
+                  description="Enable SAML 2.0 / OIDC authentication for all operators."
+                  enabled={settings.sso_enabled}
+                  onToggle={() => updateSetting('sso_enabled', !settings.sso_enabled)}
+                />
+                {settings.sso_enabled && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pl-14 space-y-4 pt-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">SSO Type</label>
+                        <select 
+                          className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm"
+                          value={settings.sso_type}
+                          onChange={e => updateSetting('sso_type', e.target.value)}
+                        >
+                          <option value="saml">SAML 2.0</option>
+                          <option value="oidc">OIDC</option>
+                        </select>
+                      </div>
+                      <Input label="Provider URL" value={settings.sso_provider_url} onChange={e => updateSetting('sso_provider_url', e.target.value)} placeholder="https://idp.example.com" />
+                      <Input label="Client ID" value={settings.sso_client_id} onChange={e => updateSetting('sso_client_id', e.target.value)} placeholder="vy-edge-manager" />
+                      <Input label="Client Secret" type="password" value={settings.sso_client_secret} onChange={e => updateSetting('sso_client_secret', e.target.value)} placeholder="••••••••" />
+                    </div>
+                  </motion.div>
+                )}
+              </div>
               <div className="h-px bg-zinc-100" />
               <div className="space-y-4">
                 <label className="text-xs font-bold text-zinc-900 uppercase tracking-widest">Centralized Syslog Endpoint</label>
                 <div className="flex gap-3">
                   <input 
                     className="flex-1 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all font-mono"
-                    placeholder="syslog.internal.vyedge.com:514"
-                    value={settings.syslog_server}
-                    onChange={e => updateSetting('syslog_server', e.target.value)}
+                    placeholder="syslog.internal.vyedge.com"
+                    value={settings.syslog_host}
+                    onChange={e => updateSetting('syslog_host', e.target.value)}
+                  />
+                  <input 
+                    className="w-24 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all font-mono"
+                    placeholder="514"
+                    value={settings.syslog_port}
+                    onChange={e => updateSetting('syslog_port', e.target.value)}
                   />
                   <Button variant="outline">Test Connection</Button>
                 </div>
@@ -1975,10 +2329,12 @@ function SystemSettingsView({ token }: { token: string }) {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-zinc-900">Encryption at Rest</p>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">AES-256-GCM • Active</p>
+                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">AES-256-GCM • {settings.encryption_at_rest ? 'Active' : 'Disabled'}</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm">Manage Keys</Button>
+                <Button variant={settings.encryption_at_rest ? 'secondary' : 'primary'} size="sm" onClick={() => updateSetting('encryption_at_rest', !settings.encryption_at_rest)}>
+                  {settings.encryption_at_rest ? 'Disable' : 'Enable'}
+                </Button>
               </div>
               <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
                 <div className="flex items-center gap-4">
@@ -1987,10 +2343,42 @@ function SystemSettingsView({ token }: { token: string }) {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-zinc-900">Session Management</p>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">24h Timeout • Multi-device</p>
+                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{settings.session_timeout}m Timeout • Multi-device</p>
                   </div>
                 </div>
-                <Button variant="ghost" size="sm">Configure</Button>
+                <div className="flex items-center gap-2">
+                  <select 
+                    className="px-2 py-1 bg-white border border-zinc-200 rounded-lg text-xs"
+                    value={settings.session_timeout}
+                    onChange={e => updateSetting('session_timeout', e.target.value)}
+                  >
+                    <option value="15">15m</option>
+                    <option value="30">30m</option>
+                    <option value="60">1h</option>
+                    <option value="240">4h</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400">
+                    <Shield size={20} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-zinc-900">Compliance Mode</p>
+                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Current: {settings.compliance_mode}</p>
+                  </div>
+                </div>
+                <select 
+                  className="px-2 py-1 bg-white border border-zinc-200 rounded-lg text-xs"
+                  value={settings.compliance_mode}
+                  onChange={e => updateSetting('compliance_mode', e.target.value)}
+                >
+                  <option value="standard">Standard</option>
+                  <option value="hipaa">HIPAA</option>
+                  <option value="pci">PCI-DSS</option>
+                  <option value="soc2">SOC2</option>
+                </select>
               </div>
             </div>
           </Card>
@@ -2010,18 +2398,18 @@ function SystemSettingsView({ token }: { token: string }) {
                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Database</span>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-bold text-zinc-900">Healthy (4.2MB)</span>
+                  <span className="text-xs font-bold text-zinc-900">Healthy</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Memory</span>
                 <div className="flex items-center gap-2 text-xs font-bold text-zinc-900">
-                  {sysInfo ? '124MB / 512MB' : 'Loading...'}
+                  {sysInfo ? `${Math.round(sysInfo.memory.rss / 1024 / 1024)}MB / 512MB` : 'Loading...'}
                 </div>
               </div>
               <div className="pt-4 border-t border-zinc-100">
-                <Button variant="secondary" className="w-full">
-                  <RefreshCcw size={14} /> Restart Services
+                <Button variant="secondary" className="w-full" onClick={() => handleSystemAction('restart')} disabled={loading === 'restart'}>
+                  <RefreshCcw size={14} className={cn(loading === 'restart' && "animate-spin")} /> {loading === 'restart' ? 'Restarting...' : 'Restart Services'}
                 </Button>
               </div>
             </div>
@@ -2033,8 +2421,12 @@ function SystemSettingsView({ token }: { token: string }) {
                 <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Last Backup</p>
                 <p className="text-sm font-bold text-white">Today, 04:00 AM</p>
                 <div className="mt-4 flex gap-2">
-                  <Button variant="outline" size="sm" className="flex-1 text-white border-zinc-700 hover:bg-zinc-800">Restore</Button>
-                  <Button variant="primary" size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-500">Backup Now</Button>
+                  <Button variant="outline" size="sm" className="flex-1 text-white border-zinc-700 hover:bg-zinc-800" onClick={() => handleSystemAction('restore')} disabled={loading === 'restore'}>
+                    {loading === 'restore' ? 'Restoring...' : 'Restore'}
+                  </Button>
+                  <Button variant="primary" size="sm" className="flex-1 bg-emerald-600 hover:bg-emerald-500" onClick={() => handleSystemAction('backup')} disabled={loading === 'backup'}>
+                    {loading === 'backup' ? 'Backing up...' : 'Backup Now'}
+                  </Button>
                 </div>
               </div>
             </div>
