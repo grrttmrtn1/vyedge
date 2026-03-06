@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET:-vyos-enterprise-secret-key}
+      - DB_PATH=/app/data/vyos_manager.db
+    volumes:
+      - ./data:/app/data
+    restart: always

@@ -5,9 +5,18 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import axios from "axios";
 import path from "path";
+import fs from "fs";
 
 const JWT_SECRET = process.env.JWT_SECRET || "vyos-enterprise-secret-key";
-const db = new Database("vyos_manager.db");
+const DB_PATH = process.env.DB_PATH || "vyos_manager.db";
+
+// Ensure data directory exists if DB_PATH is in one
+const dbDir = path.dirname(DB_PATH);
+if (dbDir !== "." && !fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+const db = new Database(DB_PATH);
 db.pragma('foreign_keys = ON');
 
 // Initialize Database
