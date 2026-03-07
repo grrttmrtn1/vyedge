@@ -62,7 +62,7 @@ export const Users: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Delete this user?")) return;
     const token = localStorage.getItem('nexus_token');
     const res = await fetch(`/api/users/${id}`, {

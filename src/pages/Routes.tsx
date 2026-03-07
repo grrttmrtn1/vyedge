@@ -63,7 +63,7 @@ export const Routes: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this route?")) return;
     const token = localStorage.getItem('nexus_token');
     await fetch(`/api/routes/${id}`, {

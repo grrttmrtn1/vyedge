@@ -1,11 +1,11 @@
 export interface User {
-  id: number;
+  id: string;
   username: string;
   role: 'admin' | 'operator' | 'read-only';
 }
 
 export interface Route {
-  id: number;
+  id: string;
   destination: string;
   next_hop: string;
   interface?: string;
@@ -14,7 +14,7 @@ export interface Route {
 }
 
 export interface FirewallRule {
-  id: number;
+  id: string;
   action: 'accept' | 'drop' | 'reject';
   protocol: string;
   source_address?: string;
@@ -26,7 +26,7 @@ export interface FirewallRule {
 }
 
 export interface VPNTunnel {
-  id: number;
+  id: string;
   name: string;
   remote_peer: string;
   local_address?: string;
@@ -37,8 +37,8 @@ export interface VPNTunnel {
 }
 
 export interface AuditLog {
-  id: number;
-  username: string;
+  id: string;
+  username?: string;
   action: string;
   details: string;
   ip_address: string;

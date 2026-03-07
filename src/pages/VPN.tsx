@@ -70,7 +70,7 @@ export const VPN: React.FC = () => {
     }
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     if (!confirm("Delete this VPN tunnel?")) return;
     const token = localStorage.getItem('nexus_token');
     await fetch(`/api/vpn/${id}`, {

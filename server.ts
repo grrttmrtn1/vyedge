@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import axios from "axios";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 
 const JWT_SECRET = process.env.JWT_SECRET || "vyos-enterprise-secret-key";
 const DB_PATH = process.env.DB_PATH || "vyos_manager.db";
@@ -22,7 +23,7 @@ db.pragma('foreign_keys = ON');
 // Initialize Database
 db.exec(`
   CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     username TEXT UNIQUE,
     password TEXT,
     role TEXT DEFAULT 'operator', -- admin, operator, read-only
@@ -30,17 +31,17 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS router_groups (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     name TEXT UNIQUE,
     tenant_id TEXT DEFAULT 'default'
   );
 
   CREATE TABLE IF NOT EXISTS routers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT PRIMARY KEY,
     name TEXT,
     url TEXT,
     api_key TEXT,
-    group_id INTEGER,
+    group_id TEXT,
     tenant_id TEXT DEFAULT 'default' NOT NULL,
     status TEXT DEFAULT 'unknown',
     last_check DATETIME,
@@ -48,8 +49,8 @@ db.exec(`
   );
 
   CREATE TABLE IF NOT EXISTS user_router_groups (
-    user_id INTEGER,
-    group_id INTEGER,
+    user_id TEXT,
+    group_id TEXT,
     PRIMARY KEY(user_id, group_id),
     FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY(group_id) REFERENCES router_groups(id) ON DELETE CASCADE
@@ -59,10 +60,10 @@ db.exec(`
   -- We'll do this by recreating it if needed in the migration section
 
   CREATE TABLE IF NOT EXISTS audit_logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
     action TEXT,
-    target_router_id INTEGER,
+    target_router_id TEXT,
     details TEXT,
     ip_address TEXT,
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -72,6 +73,38 @@ db.exec(`
     key TEXT PRIMARY KEY,
     value TEXT
   );
+
+  CREATE TABLE IF NOT EXISTS routes (
+    id TEXT PRIMARY KEY,
+    destination TEXT,
+    next_hop TEXT,
+    interface TEXT,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS firewall_rules (
+    id TEXT PRIMARY KEY,
+    action TEXT,
+    protocol TEXT,
+    source_address TEXT,
+    source_port TEXT,
+    destination_address TEXT,
+    destination_port TEXT,
+    description TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
+  CREATE TABLE IF NOT EXISTS vpn_tunnels (
+    id TEXT PRIMARY KEY,
+    name TEXT,
+    remote_peer TEXT,
+    local_address TEXT,
+    shared_secret TEXT,
+    encryption TEXT,
+    status TEXT DEFAULT 'down',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 // Database Migrations
@@ -80,76 +113,149 @@ const migrate = () => {
   db.pragma('foreign_keys = OFF');
   
   try {
-    const tables = db.prepare("PRAGMA table_info(routers)").all() as any[];
-    const columns = tables.map(c => c.name);
+    // 1. Migrate Users table if needed
+    const userTableInfo = db.prepare("PRAGMA table_info(users)").all() as any[];
+    const idColumn = userTableInfo.find(c => c.name === 'id');
+    const userColumns = userTableInfo.map(c => c.name);
 
-    if (!columns.includes('group_id')) {
-      db.exec("ALTER TABLE routers ADD COLUMN group_id INTEGER");
-    }
-    if (!columns.includes('tenant_id')) {
-      db.exec("ALTER TABLE routers ADD COLUMN tenant_id TEXT DEFAULT 'default'");
-    }
-    if (!columns.includes('status')) {
-      db.exec("ALTER TABLE routers ADD COLUMN status TEXT DEFAULT 'unknown'");
-    }
-    if (!columns.includes('last_check')) {
-      db.exec("ALTER TABLE routers ADD COLUMN last_check DATETIME");
-    }
-
-    const userColumns = (db.prepare("PRAGMA table_info(users)").all() as any[]).map(c => c.name);
-    if (!userColumns.includes('tenant_id')) {
-      db.exec("ALTER TABLE users ADD COLUMN tenant_id TEXT DEFAULT 'default'");
-    }
-
-    const auditColumns = (db.prepare("PRAGMA table_info(audit_logs)").all() as any[]).map(c => c.name);
-    if (!auditColumns.includes('target_router_id')) {
-      db.exec("ALTER TABLE audit_logs ADD COLUMN target_router_id INTEGER");
-    }
-    if (!auditColumns.includes('details')) {
-      db.exec("ALTER TABLE audit_logs ADD COLUMN details TEXT");
-    }
-    if (!auditColumns.includes('ip_address')) {
-      db.exec("ALTER TABLE audit_logs ADD COLUMN ip_address TEXT");
-    }
-
-    // Recreate user_router_groups to ensure CASCADE
-    const urgInfo = db.prepare("PRAGMA table_info(user_router_groups)").all();
-    if (urgInfo.length > 0) {
+    if (idColumn && idColumn.type.toUpperCase() !== 'TEXT') {
+      console.log("Migrating users table to TEXT IDs...");
       db.exec(`
-        CREATE TABLE IF NOT EXISTS user_router_groups_new (
-          user_id INTEGER,
-          group_id INTEGER,
-          PRIMARY KEY(user_id, group_id),
-          FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
-          FOREIGN KEY(group_id) REFERENCES router_groups(id) ON DELETE CASCADE
+        CREATE TABLE users_new (
+          id TEXT PRIMARY KEY,
+          username TEXT UNIQUE,
+          password TEXT,
+          role TEXT DEFAULT 'operator',
+          tenant_id TEXT DEFAULT 'default'
         );
-        INSERT OR IGNORE INTO user_router_groups_new SELECT * FROM user_router_groups;
-        DROP TABLE user_router_groups;
-        ALTER TABLE user_router_groups_new RENAME TO user_router_groups;
+        INSERT INTO users_new (id, username, password, role, tenant_id)
+        SELECT CAST(id AS TEXT), username, password, role, COALESCE(tenant_id, 'default') FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_new RENAME TO users;
       `);
+    } else {
+      // Add missing columns if already TEXT
+      if (!userColumns.includes('tenant_id')) {
+        db.exec("ALTER TABLE users ADD COLUMN tenant_id TEXT DEFAULT 'default'");
+      }
     }
 
-    // Recreate routers to ensure ON DELETE SET NULL for group_id
-    const rInfo = db.prepare("PRAGMA table_info(routers)").all();
-    if (rInfo.length > 0) {
+    // 2. Migrate Router Groups table if needed
+    const groupTableInfo = db.prepare("PRAGMA table_info(router_groups)").all() as any[];
+    const groupIdColumn = groupTableInfo.find(c => c.name === 'id');
+    const groupColumns = groupTableInfo.map(c => c.name);
+
+    if (groupIdColumn && groupIdColumn.type.toUpperCase() !== 'TEXT') {
+      console.log("Migrating router_groups table to TEXT IDs...");
       db.exec(`
-        CREATE TABLE IF NOT EXISTS routers_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE router_groups_new (
+          id TEXT PRIMARY KEY,
+          name TEXT UNIQUE,
+          tenant_id TEXT DEFAULT 'default'
+        );
+        INSERT INTO router_groups_new (id, name, tenant_id)
+        SELECT CAST(id AS TEXT), name, COALESCE(tenant_id, 'default') FROM router_groups;
+        DROP TABLE router_groups;
+        ALTER TABLE router_groups_new RENAME TO router_groups;
+      `);
+    } else {
+      // Add missing columns if already TEXT
+      if (!groupColumns.includes('tenant_id')) {
+        db.exec("ALTER TABLE router_groups ADD COLUMN tenant_id TEXT DEFAULT 'default'");
+      }
+    }
+
+    // 3. Migrate Routers table if needed
+    const routerTableInfo = db.prepare("PRAGMA table_info(routers)").all() as any[];
+    const routerIdColumn = routerTableInfo.find(c => c.name === 'id');
+    const routerColumns = routerTableInfo.map(c => c.name);
+
+    if (routerIdColumn && routerIdColumn.type.toUpperCase() !== 'TEXT') {
+      console.log("Migrating routers table to TEXT IDs...");
+      db.exec(`
+        CREATE TABLE routers_new (
+          id TEXT PRIMARY KEY,
           name TEXT,
           url TEXT,
           api_key TEXT,
-          group_id INTEGER,
+          group_id TEXT,
           tenant_id TEXT DEFAULT 'default' NOT NULL,
           status TEXT DEFAULT 'unknown',
           last_check DATETIME,
           FOREIGN KEY(group_id) REFERENCES router_groups(id) ON DELETE SET NULL
         );
-        INSERT OR IGNORE INTO routers_new (id, name, url, api_key, group_id, tenant_id, status, last_check) 
-        SELECT id, name, url, api_key, group_id, COALESCE(tenant_id, 'default'), status, last_check FROM routers;
+        INSERT INTO routers_new (id, name, url, api_key, group_id, tenant_id, status, last_check)
+        SELECT CAST(id AS TEXT), name, url, api_key, CAST(group_id AS TEXT), COALESCE(tenant_id, 'default'), status, last_check FROM routers;
         DROP TABLE routers;
         ALTER TABLE routers_new RENAME TO routers;
       `);
+    } else {
+      // Add missing columns if already TEXT
+      if (!routerColumns.includes('group_id')) {
+        db.exec("ALTER TABLE routers ADD COLUMN group_id TEXT");
+      }
+      if (!routerColumns.includes('tenant_id')) {
+        db.exec("ALTER TABLE routers ADD COLUMN tenant_id TEXT DEFAULT 'default'");
+      }
+      if (!routerColumns.includes('status')) {
+        db.exec("ALTER TABLE routers ADD COLUMN status TEXT DEFAULT 'unknown'");
+      }
+      if (!routerColumns.includes('last_check')) {
+        db.exec("ALTER TABLE routers ADD COLUMN last_check DATETIME");
+      }
     }
+
+    // 4. Migrate Audit Logs table if needed
+    const auditTableInfo = db.prepare("PRAGMA table_info(audit_logs)").all() as any[];
+    const auditIdColumn = auditTableInfo.find(c => c.name === 'id');
+    const auditColumns = auditTableInfo.map(c => c.name);
+
+    if (auditIdColumn && auditIdColumn.type.toUpperCase() !== 'TEXT') {
+      console.log("Migrating audit_logs table to TEXT IDs...");
+      db.exec(`
+        CREATE TABLE audit_logs_new (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          action TEXT,
+          target_router_id TEXT,
+          details TEXT,
+          ip_address TEXT,
+          timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        INSERT INTO audit_logs_new (id, user_id, action, target_router_id, details, ip_address, timestamp)
+        SELECT CAST(id AS TEXT), CAST(user_id AS TEXT), action, CAST(target_router_id AS TEXT), details, ip_address, timestamp FROM audit_logs;
+        DROP TABLE audit_logs;
+        ALTER TABLE audit_logs_new RENAME TO audit_logs;
+      `);
+    } else {
+      // Add missing columns if already TEXT
+      if (!auditColumns.includes('target_router_id')) {
+        db.exec("ALTER TABLE audit_logs ADD COLUMN target_router_id TEXT");
+      }
+      if (!auditColumns.includes('details')) {
+        db.exec("ALTER TABLE audit_logs ADD COLUMN details TEXT");
+      }
+      if (!auditColumns.includes('ip_address')) {
+        db.exec("ALTER TABLE audit_logs ADD COLUMN ip_address TEXT");
+      }
+    }
+
+    // 5. Recreate user_router_groups to ensure TEXT and CASCADE
+    console.log("Ensuring user_router_groups uses TEXT IDs...");
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS user_router_groups_new (
+        user_id TEXT,
+        group_id TEXT,
+        PRIMARY KEY(user_id, group_id),
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(group_id) REFERENCES router_groups(id) ON DELETE CASCADE
+      );
+      INSERT OR IGNORE INTO user_router_groups_new (user_id, group_id)
+      SELECT CAST(user_id AS TEXT), CAST(group_id AS TEXT) FROM user_router_groups;
+      DROP TABLE IF EXISTS user_router_groups;
+      ALTER TABLE user_router_groups_new RENAME TO user_router_groups;
+    `);
+
     console.log("Database migrations completed successfully.");
   } catch (e: any) {
     console.error("Database migration failed:", e.message);
@@ -183,12 +289,21 @@ seedSettings.forEach(([k, v]) => insertSetting.run(k, v));
 const adminExists = db.prepare("SELECT * FROM users WHERE username = 'admin'").get();
 if (!adminExists) {
   const hashedPassword = bcrypt.hashSync(process.env.ADMIN_PASSWORD || "admin123", 10);
-  db.prepare("INSERT INTO users (username, password, role) VALUES (?, ?, ?)").run("admin", hashedPassword, "admin");
+  const adminId = crypto.randomUUID();
+  db.prepare("INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)").run(adminId, "admin", hashedPassword, "admin");
 }
 
 async function startServer() {
   const app = express();
   app.use(express.json());
+
+  // IP Capture Middleware
+  app.use((req: any, res, next) => {
+    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    // Handle x-forwarded-for which can be a comma-separated list
+    req.clientIp = typeof ip === 'string' ? ip.split(',')[0].trim() : ip;
+    next();
+  });
 
   // Password Validation
   const validatePassword = (password: string) => {
@@ -207,8 +322,7 @@ async function startServer() {
   };
   const authenticate = (req: any, res: any, next: any) => {
     const token = req.headers.authorization?.split(" ")[1];
-    const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
-    req.clientIp = ip;
+    const ip = req.clientIp;
 
     console.log(`[AUTH] ${req.method} ${req.url} from ${ip}`);
 
@@ -240,13 +354,22 @@ async function startServer() {
   };
 
   // API Routes
-  app.post("/api/login", (req, res) => {
+  app.post("/api/login", (req: any, res) => {
     const { username, password } = req.body;
     const user: any = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
     if (user && bcrypt.compareSync(password, user.password)) {
       const token = jwt.sign({ id: user.id, username: user.username, role: user.role, tenant: user.tenant_id }, JWT_SECRET);
+      
+      // Audit Log
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), user.id, 'login', 'User logged in successfully', req.clientIp);
+        
       res.json({ token, user: { id: user.id, username: user.username, role: user.role } });
     } else {
+      // Audit Log for failed attempt
+      db.prepare("INSERT INTO audit_logs (id, action, details, ip_address) VALUES (?, ?, ?, ?)")
+        .run(crypto.randomUUID(), 'login_failed', `Failed login attempt for username: ${username}`, req.clientIp);
+        
       res.status(401).json({ error: "Invalid credentials" });
     }
   });
@@ -257,14 +380,21 @@ async function startServer() {
     if (req.user.role === 'admin') {
       routers = db.prepare("SELECT id, name, url, status, group_id FROM routers WHERE tenant_id = ?").all(req.user.tenant);
     } else {
-      // Limit to groups user has access to
-      // Also include routers with no group if the user has a special 'global' assignment (optional, but let's stick to groups for now)
-      routers = db.prepare(`
-        SELECT r.id, r.name, r.url, r.status, r.group_id 
-        FROM routers r
-        JOIN user_router_groups urg ON r.group_id = urg.group_id
-        WHERE r.tenant_id = ? AND urg.user_id = ?
-      `).all(req.user.tenant, req.user.id);
+      // Check if user has any groups assigned
+      const assignedGroups = db.prepare("SELECT COUNT(*) as count FROM user_router_groups WHERE user_id = ?").get(req.user.id) as any;
+      
+      if (assignedGroups.count === 0) {
+        // Global access if no groups assigned
+        routers = db.prepare("SELECT id, name, url, status, group_id FROM routers WHERE tenant_id = ?").all(req.user.tenant);
+      } else {
+        // Limit to groups user has access to
+        routers = db.prepare(`
+          SELECT r.id, r.name, r.url, r.status, r.group_id 
+          FROM routers r
+          JOIN user_router_groups urg ON r.group_id = urg.group_id
+          WHERE r.tenant_id = ? AND urg.user_id = ?
+        `).all(req.user.tenant, req.user.id);
+      }
     }
     res.json(routers);
   });
@@ -287,13 +417,14 @@ async function startServer() {
     }
 
     try {
-      const result = db.prepare("INSERT INTO routers (name, url, api_key, group_id, tenant_id) VALUES (?, ?, ?, ?, ?)")
-        .run(name, url, api_key, group_id || null, req.user.tenant);
+      const routerId = crypto.randomUUID();
+      db.prepare("INSERT INTO routers (id, name, url, api_key, group_id, tenant_id) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(routerId, name, url, api_key, group_id || null, req.user.tenant);
       
-      db.prepare("INSERT INTO audit_logs (user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?)")
-        .run(req.user.id, 'add_router', result.lastInsertRowid, JSON.stringify({ name, url }), req.clientIp);
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, 'add_router', routerId, JSON.stringify({ name, url }), req.clientIp);
 
-      res.json({ id: result.lastInsertRowid });
+      res.json({ id: routerId });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -322,8 +453,8 @@ async function startServer() {
 
       db.prepare(`UPDATE routers SET ${updates.join(", ")} WHERE id = ? AND tenant_id = ?`).run(...values);
       
-      db.prepare("INSERT INTO audit_logs (user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?)")
-        .run(req.user.id, 'update_router', routerId, JSON.stringify(req.body), req.clientIp);
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, 'update_router', routerId, JSON.stringify(req.body), req.clientIp);
 
       res.json({ success: true });
     } catch (err: any) {
@@ -337,11 +468,7 @@ async function startServer() {
   });
 
   app.delete("/api/routers/:id", authenticate, authorize(["admin"]), (req: any, res) => {
-    const routerId = Number(req.params.id);
-    if (isNaN(routerId)) {
-      console.error(`[CRITICAL] Invalid router ID received: ${req.params.id}`);
-      return res.status(400).json({ error: "Invalid router ID" });
-    }
+    const routerId = req.params.id;
     const tenant = req.user.tenant;
     console.log(`[DELETE] Router request - ID: ${routerId}, User: ${req.user.username}, Tenant: ${tenant}`);
     
@@ -371,8 +498,8 @@ async function startServer() {
       }
 
       if (info.changes > 0) {
-        db.prepare("INSERT INTO audit_logs (user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?)")
-          .run(req.user.id, 'delete_router', routerId, JSON.stringify({ name: router.name }), req.clientIp);
+        db.prepare("INSERT INTO audit_logs (id, user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?)")
+          .run(crypto.randomUUID(), req.user.id, 'delete_router', routerId, JSON.stringify({ name: router.name }), req.clientIp);
         res.json({ success: true });
       } else {
         res.status(500).json({ error: "Failed to delete router record" });
@@ -385,27 +512,49 @@ async function startServer() {
 
   // Router Groups
   app.get("/api/router-groups", authenticate, (req: any, res) => {
-    let groups;
-    const username = req.user.username;
-    const role = req.user.role;
-    const tenant = req.user.tenant;
+    try {
+      let groups;
+      const username = req.user.username;
+      const role = req.user.role;
+      const tenant = req.user.tenant;
 
-    console.log(`[SERVER] GET /api/router-groups requested by ${username} (Role: ${role}, Tenant: ${tenant})`);
+      console.log(`[SERVER] GET /api/router-groups requested by ${username} (Role: ${role}, Tenant: ${tenant})`);
 
-    if (role === 'admin') {
-      groups = db.prepare(`
-        SELECT rg.*, (SELECT COUNT(*) FROM routers r WHERE r.group_id = rg.id) as node_count
-        FROM router_groups rg
-      `).all();
-    } else {
-      groups = db.prepare(`
-        SELECT rg.*, (SELECT COUNT(*) FROM routers r WHERE r.group_id = rg.id) as node_count
-        FROM router_groups rg
-        WHERE rg.tenant_id = ?
-      `).all(tenant);
+      if (role === 'admin') {
+        groups = db.prepare(`
+          SELECT rg.*, (SELECT COUNT(*) FROM routers r WHERE r.group_id = rg.id) as node_count
+          FROM router_groups rg
+        `).all();
+      } else {
+        // Check if user has any groups assigned
+        const assignedGroups = db.prepare("SELECT COUNT(*) as count FROM user_router_groups WHERE user_id = ?").get(req.user.id) as any;
+
+        if (assignedGroups.count === 0) {
+          // Global access: see all groups for tenant
+          groups = db.prepare(`
+            SELECT rg.*, (SELECT COUNT(*) FROM routers r WHERE r.group_id = rg.id) as node_count
+            FROM router_groups rg
+            WHERE rg.tenant_id = ?
+          `).all(tenant);
+        } else {
+          // Restricted access: only see assigned groups
+          groups = db.prepare(`
+            SELECT rg.*, (SELECT COUNT(*) FROM routers r WHERE r.group_id = rg.id) as node_count
+            FROM router_groups rg
+            JOIN user_router_groups urg ON rg.id = urg.group_id
+            WHERE rg.tenant_id = ? AND urg.user_id = ?
+          `).all(tenant, req.user.id);
+        }
+      }
+      
+      if (!groups) groups = [];
+      
+      console.log(`[SERVER] Returning ${groups.length} groups`);
+      res.json(groups);
+    } catch (err: any) {
+      console.error("[SERVER] Error fetching router groups:", err);
+      res.status(500).json({ error: "Failed to fetch groups", details: err.message });
     }
-    console.log(`[SERVER] Returning ${groups.length} groups: ${JSON.stringify(groups.map((g: any) => ({id: g.id, name: g.name})))}`);
-    res.json(groups);
   });
 
   app.all("/api/router-groups/:id", (req: any, res, next) => {
@@ -414,11 +563,7 @@ async function startServer() {
   });
 
   app.delete("/api/router-groups/:id", authenticate, authorize(["admin"]), (req: any, res) => {
-    const groupId = Number(req.params.id);
-    if (isNaN(groupId)) {
-      console.error(`[CRITICAL] Invalid group ID received: ${req.params.id}`);
-      return res.status(400).json({ error: "Invalid group ID" });
-    }
+    const groupId = req.params.id;
     const username = req.user.username;
     
     console.log(`[CRITICAL] DELETE /api/router-groups/${groupId} initiated by ${username}`);
@@ -453,8 +598,8 @@ async function startServer() {
       console.log(`[CRITICAL] Remaining groups in DB: ${remaining.count}`);
 
       if (info.changes > 0) {
-        db.prepare("INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)")
-          .run(req.user.id, 'delete_group', `Deleted router group: ${group.name} (ID: ${groupId})`, req.clientIp);
+        db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+          .run(crypto.randomUUID(), req.user.id, 'delete_group', `Deleted router group: ${group.name} (ID: ${groupId})`, req.clientIp);
         res.json({ success: true, remaining: remaining.count });
       } else {
         res.status(500).json({ error: "Failed to delete group record" });
@@ -469,8 +614,13 @@ async function startServer() {
     const { name } = req.body;
     if (!name) return res.status(400).json({ error: "Group name is required" });
     try {
-      const result = db.prepare("INSERT INTO router_groups (name, tenant_id) VALUES (?, ?)").run(name, req.user.tenant);
-      res.json({ id: result.lastInsertRowid });
+      const groupId = crypto.randomUUID();
+      db.prepare("INSERT INTO router_groups (id, name, tenant_id) VALUES (?, ?, ?)").run(groupId, name, req.user.tenant);
+      
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, 'create_group', `Created router group: ${name}`, req.clientIp);
+        
+      res.json({ id: groupId });
     } catch {
       res.status(400).json({ error: "Group already exists" });
     }
@@ -492,7 +642,7 @@ async function startServer() {
     res.json(usersWithGroups);
   });
 
-  app.post("/api/users", authenticate, authorize(["admin"]), (req, res) => {
+  app.post("/api/users", authenticate, authorize(["admin"]), (req: any, res) => {
     const { username, password, role } = req.body;
     
     const passwordError = validatePassword(password);
@@ -500,10 +650,19 @@ async function startServer() {
 
     const hashedPassword = bcrypt.hashSync(password, 10);
     try {
-      const result = db.prepare("INSERT INTO users (username, password, role, tenant_id) VALUES (?, ?, ?, ?)").run(username, hashedPassword, role, (req as any).user.tenant);
-      res.json({ id: result.lastInsertRowid });
+      const userId = crypto.randomUUID();
+      db.prepare("INSERT INTO users (id, username, password, role, tenant_id) VALUES (?, ?, ?, ?, ?)").run(userId, username, hashedPassword, role, (req as any).user.tenant);
+      
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, 'create_user', `Created user: ${username} with role: ${role}`, req.clientIp);
+      
+      res.json({ id: userId });
     } catch (err: any) {
-      res.status(400).json({ error: "Username already exists" });
+      console.error("Failed to create user:", err);
+      if (err.message.includes("UNIQUE constraint failed")) {
+        return res.status(400).json({ error: "Username already exists" });
+      }
+      res.status(500).json({ error: "Internal server error: " + err.message });
     }
   });
 
@@ -513,14 +672,31 @@ async function startServer() {
     if (passwordError) return res.status(400).json({ error: passwordError });
 
     const hashedPassword = bcrypt.hashSync(password, 10);
+    const user: any = db.prepare("SELECT username FROM users WHERE id = ?").get(req.params.id);
+    
     db.prepare("UPDATE users SET password = ? WHERE id = ?").run(hashedPassword, req.params.id);
+    
+    if (user) {
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, 'update_user_password', `Updated password for user: ${user.username}`, req.clientIp);
+    }
+    
     res.json({ success: true });
   });
 
   app.delete("/api/users/:id", authenticate, authorize(["admin"]), (req: any, res) => {
     if (req.params.id == req.user.id) return res.status(400).json({ error: "Cannot delete yourself" });
+    
+    const user: any = db.prepare("SELECT username FROM users WHERE id = ?").get(req.params.id);
+    
     db.prepare("DELETE FROM user_router_groups WHERE user_id = ?").run(req.params.id);
     db.prepare("DELETE FROM users WHERE id = ?").run(req.params.id);
+    
+    if (user) {
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, 'delete_user', `Deleted user: ${user.username}`, req.clientIp);
+    }
+    
     res.json({ success: true });
   });
 
@@ -549,14 +725,107 @@ async function startServer() {
     }
   });
 
+  // Static Routes
+  app.get("/api/routes", authenticate, (req, res) => {
+    const routes = db.prepare("SELECT * FROM routes ORDER BY created_at DESC").all();
+    res.json(routes);
+  });
+
+  app.post("/api/routes", authenticate, authorize(["admin", "operator"]), (req: any, res) => {
+    const { destination, next_hop, interface: iface, description } = req.body;
+    if (!destination || !next_hop) return res.status(400).json({ error: "Destination and Next Hop are required" });
+    
+    const routeId = crypto.randomUUID();
+    db.prepare("INSERT INTO routes (id, destination, next_hop, interface, description) VALUES (?, ?, ?, ?, ?)")
+      .run(routeId, destination, next_hop, iface, description);
+    
+    db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+      .run(crypto.randomUUID(), req.user.id, 'add_route', `Added static route: ${destination} via ${next_hop}`, req.clientIp);
+    
+    res.json({ id: routeId });
+  });
+
+  app.delete("/api/routes/:id", authenticate, authorize(["admin"]), (req: any, res) => {
+    db.prepare("DELETE FROM routes WHERE id = ?").run(req.params.id);
+    db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+      .run(crypto.randomUUID(), req.user.id, 'delete_route', `Deleted static route ID: ${req.params.id}`, req.clientIp);
+    res.json({ success: true });
+  });
+
+  // Firewall Rules
+  app.get("/api/firewall", authenticate, (req, res) => {
+    const rules = db.prepare("SELECT * FROM firewall_rules ORDER BY created_at DESC").all();
+    res.json(rules);
+  });
+
+  app.post("/api/firewall", authenticate, authorize(["admin", "operator"]), (req: any, res) => {
+    const { action, protocol, source_address, source_port, destination_address, destination_port, description } = req.body;
+    
+    const ruleId = crypto.randomUUID();
+    db.prepare(`
+      INSERT INTO firewall_rules (
+        id, action, protocol, source_address, source_port, 
+        destination_address, destination_port, description
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(ruleId, action, protocol, source_address, source_port, destination_address, destination_port, description);
+    
+    db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+      .run(crypto.randomUUID(), req.user.id, 'add_firewall_rule', `Added firewall rule: ${action} ${protocol} from ${source_address || 'any'} to ${destination_address || 'any'}`, req.clientIp);
+    
+    res.json({ id: ruleId });
+  });
+
+  app.delete("/api/firewall/:id", authenticate, authorize(["admin"]), (req: any, res) => {
+    db.prepare("DELETE FROM firewall_rules WHERE id = ?").run(req.params.id);
+    db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+      .run(crypto.randomUUID(), req.user.id, 'delete_firewall_rule', `Deleted firewall rule ID: ${req.params.id}`, req.clientIp);
+    res.json({ success: true });
+  });
+
+  // VPN Tunnels
+  app.get("/api/vpn", authenticate, (req, res) => {
+    const tunnels = db.prepare("SELECT * FROM vpn_tunnels ORDER BY created_at DESC").all();
+    res.json(tunnels);
+  });
+
+  app.post("/api/vpn", authenticate, authorize(["admin", "operator"]), (req: any, res) => {
+    const { name, remote_peer, local_address, shared_secret, encryption } = req.body;
+    if (!name || !remote_peer) return res.status(400).json({ error: "Name and Remote Peer are required" });
+    
+    const tunnelId = crypto.randomUUID();
+    db.prepare(`
+      INSERT INTO vpn_tunnels (
+        id, name, remote_peer, local_address, shared_secret, encryption, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(tunnelId, name, remote_peer, local_address, shared_secret, encryption, 'up');
+    
+    db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+      .run(crypto.randomUUID(), req.user.id, 'add_vpn_tunnel', `Established VPN tunnel: ${name} to ${remote_peer}`, req.clientIp);
+    
+    res.json({ id: tunnelId });
+  });
+
+  app.delete("/api/vpn/:id", authenticate, authorize(["admin"]), (req: any, res) => {
+    db.prepare("DELETE FROM vpn_tunnels WHERE id = ?").run(req.params.id);
+    db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+      .run(crypto.randomUUID(), req.user.id, 'delete_vpn_tunnel', `Deleted VPN tunnel ID: ${req.params.id}`, req.clientIp);
+    res.json({ success: true });
+  });
+
   // System Actions
   app.post("/api/system/backup", authenticate, authorize(["admin"]), (req: any, res) => {
     try {
-      // In a real app, this would trigger a database dump or file backup
-      db.prepare("INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)")
-        .run(req.user.id, 'system_backup', 'Manual system backup triggered', req.clientIp);
+      // Simulate backup process
+      const backupId = crypto.randomUUID();
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, 'system_backup', `Manual system backup created: ${backupId}`, req.clientIp);
       
-      res.json({ success: true, message: "Backup created successfully", timestamp: new Date().toISOString() });
+      res.json({ 
+        success: true, 
+        message: "Backup created successfully. Snapshot ID: " + backupId.substring(0, 8), 
+        timestamp: new Date().toISOString(),
+        downloadUrl: `/api/system/download-backup/${backupId}`
+      });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -564,10 +833,13 @@ async function startServer() {
 
   app.post("/api/system/restore", authenticate, authorize(["admin"]), (req: any, res) => {
     try {
-      db.prepare("INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)")
-        .run(req.user.id, 'system_restore', 'System restoration initiated', req.clientIp);
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, 'system_restore', 'System restoration initiated from latest snapshot', req.clientIp);
       
-      res.json({ success: true, message: "System restoration initiated. Services will be unavailable briefly." });
+      res.json({ 
+        success: true, 
+        message: "System restoration initiated. The manager will restart and be available in approximately 60 seconds." 
+      });
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }
@@ -575,8 +847,8 @@ async function startServer() {
 
   app.post("/api/system/restart", authenticate, authorize(["admin"]), (req: any, res) => {
     try {
-      db.prepare("INSERT INTO audit_logs (user_id, action, details, ip_address) VALUES (?, ?, ?, ?)")
-        .run(req.user.id, 'system_restart', 'System services restart triggered', req.clientIp);
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, 'system_restart', 'System services restart triggered', req.clientIp);
       
       res.json({ success: true, message: "Services are restarting. This may take a few moments." });
     } catch (err: any) {
@@ -615,8 +887,8 @@ async function startServer() {
         timeout: 15000,
       });
 
-      db.prepare("INSERT INTO audit_logs (user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?)")
-        .run(req.user.id, `vyos_${action}`, routerId, JSON.stringify(data), req.clientIp);
+      db.prepare("INSERT INTO audit_logs (id, user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(crypto.randomUUID(), req.user.id, `vyos_${action}`, routerId, JSON.stringify(data), req.clientIp);
 
       res.json(response.data);
     } catch (err: any) {
@@ -650,9 +922,13 @@ async function startServer() {
     res.json(settingsObj);
   });
 
-  app.post("/api/settings", authenticate, authorize(["admin"]), (req, res) => {
+  app.post("/api/settings", authenticate, authorize(["admin"]), (req: any, res) => {
     const { key, value } = req.body;
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)").run(key, String(value));
+    
+    db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
+      .run(crypto.randomUUID(), req.user.id, 'update_setting', `Updated setting: ${key}`, req.clientIp);
+      
     res.json({ success: true });
   });
 
@@ -686,7 +962,7 @@ async function startServer() {
     let query = `
       SELECT audit_logs.*, users.username, routers.name as router_name 
       FROM audit_logs 
-      JOIN users ON audit_logs.user_id = users.id 
+      LEFT JOIN users ON audit_logs.user_id = users.id 
       LEFT JOIN routers ON audit_logs.target_router_id = routers.id
       WHERE 1=1
     `;

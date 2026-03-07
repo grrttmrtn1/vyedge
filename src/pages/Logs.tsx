@@ -86,7 +86,7 @@ export const Logs: React.FC = () => {
                       <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-zinc-500">
                         <Terminal size={12} />
                       </div>
-                      <span className="text-xs font-bold text-zinc-900">{log.username}</span>
+                      <span className="text-xs font-bold text-zinc-900">{log.username || 'System'}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4">

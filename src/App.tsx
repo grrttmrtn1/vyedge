@@ -46,21 +46,21 @@ function cn(...inputs: ClassValue[]) {
 // --- Types ---
 
 interface User {
-  id: number;
+  id: string;
   username: string;
   role: 'admin' | 'operator' | 'read-only';
   groups?: string[];
 }
 
 interface Router {
-  id: number;
+  id: string;
   name: string;
   url: string;
   status: string;
 }
 
 interface AuditLog {
-  id: number;
+  id: string;
   username: string;
   action: string;
   router_name: string;
@@ -164,7 +164,7 @@ const Input = ({
 // --- Main App ---
 
 export default function App() {
-  const [token, setToken] = useState<string | null>(localStorage.getItem('vyos_token'));
+  const [token, setToken] = useState<string | null>(localStorage.getItem('nexus_token'));
   console.log("[UI] App State: token exists:", !!token);
   const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'routers' | 'config' | 'logs' | 'settings' | 'users' | 'browser' | 'map'>('dashboard');
@@ -195,7 +195,7 @@ export default function App() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-      setRouters(data);
+      if (Array.isArray(data)) setRouters(data);
     } catch {
       console.error("Failed to fetch routers");
     }
@@ -207,7 +207,7 @@ export default function App() {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await res.json();
-      setLogs(data);
+      if (Array.isArray(data)) setLogs(data);
     } catch {
       console.error("Failed to fetch logs");
     }
@@ -258,7 +258,7 @@ export default function App() {
         }
       };
 
-      const savedUser = localStorage.getItem('vyos_user');
+      const savedUser = localStorage.getItem('nexus_user');
       if (savedUser) setUser(JSON.parse(savedUser));
     }
   }, [token, fetchRouters, fetchLogs, fetchGroups]);
@@ -277,8 +277,8 @@ export default function App() {
       if (res.ok) {
         setToken(data.token);
         setUser(data.user);
-        localStorage.setItem('vyos_token', data.token);
-        localStorage.setItem('vyos_user', JSON.stringify(data.user));
+        localStorage.setItem('nexus_token', data.token);
+        localStorage.setItem('nexus_user', JSON.stringify(data.user));
       } else {
         setError(data.error);
       }
@@ -293,8 +293,8 @@ export default function App() {
     setToken(null);
     setUser(null);
     setLoginForm({ username: '', password: '' });
-    localStorage.removeItem('vyos_token');
-    localStorage.removeItem('vyos_user');
+    localStorage.removeItem('nexus_token');
+    localStorage.removeItem('nexus_user');
   };
 
   if (!token) {
@@ -537,9 +537,9 @@ function UserAdminView({ token, currentUser, groups, onRefreshRouters, onRefresh
   const [showGroups, setShowGroups] = useState(false);
   const [form, setForm] = useState({ username: '', password: '', role: 'operator' as 'admin' | 'operator' | 'read-only' });
   const [groupForm, setGroupForm] = useState({ name: '' });
-  const [resettingPassword, setResettingPassword] = useState<{ id: number; username: string } | null>(null);
-  const [assigningGroups, setAssigningGroups] = useState<{ id: number; username: string } | null>(null);
-  const [userGroups, setUserGroups] = useState<number[]>([]);
+  const [resettingPassword, setResettingPassword] = useState<{ id: string; username: string } | null>(null);
+  const [assigningGroups, setAssigningGroups] = useState<{ id: string; username: string } | null>(null);
+  const [userGroups, setUserGroups] = useState<string[]>([]);
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -845,7 +845,7 @@ function UserAdminView({ token, currentUser, groups, onRefreshRouters, onRefresh
                           <span key={g} className="px-2 py-0.5 bg-zinc-50 border border-zinc-100 rounded text-[9px] font-medium text-zinc-600">{g}</span>
                         ))
                       ) : (
-                        <span className="text-[10px] text-red-400 font-medium">No Access</span>
+                        <span className="text-[10px] text-emerald-500 font-bold italic">Global Access (Default)</span>
                       )}
                     </div>
                   </td>
@@ -1223,7 +1223,7 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
   const [editForm, setEditForm] = useState({ name: '', url: '', api_key: '', group_id: '' });
   const [groupForm, setGroupForm] = useState({ name: '' });
   const [error, setError] = useState<string | null>(null);
-  const [checking, setChecking] = useState<number | null>(null);
+  const [checking, setChecking] = useState<string | null>(null);
   const [selectedRouter, setSelectedRouter] = useState<Router | null>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -1638,12 +1638,12 @@ function DetailItem({ label, value }: { label: string; value: any }) {
 }
 
 function ConfigBrowserView({ routers, token }: { routers: Router[]; token: string }) {
-  const [selectedRouter, setSelectedRouter] = useState<number | null>(null);
+  const [selectedRouter, setSelectedRouter] = useState<string | null>(null);
   const [config, setConfig] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchConfig = useCallback(async (id: number) => {
+  const fetchConfig = useCallback(async (id: string) => {
     setLoading(true);
     setError(null);
     try {
@@ -1683,7 +1683,7 @@ function ConfigBrowserView({ routers, token }: { routers: Router[]; token: strin
           <select 
             className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm"
             value={selectedRouter || ''}
-            onChange={e => setSelectedRouter(Number(e.target.value))}
+            onChange={e => setSelectedRouter(e.target.value)}
           >
             <option value="">Select Router...</option>
             {routers.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
@@ -1869,9 +1869,9 @@ function ConfigNode({ data, path, routerId, token }: { data: any; path: string[]
   );
 }
 function ConfigView({ routers, token }: { routers: Router[]; token: string }) {
-  const [selectedRouters, setSelectedRouters] = useState<number[]>([]);
+  const [selectedRouters, setSelectedRouters] = useState<string[]>([]);
   const [command, setCommand] = useState('');
-  const [outputs, setOutputs] = useState<Record<number, any>>({});
+  const [outputs, setOutputs] = useState<Record<string, any>>({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -1887,7 +1887,7 @@ function ConfigView({ routers, token }: { routers: Router[]; token: string }) {
     setLoading(true);
     setOutputs({});
     
-    const executeOnRouter = async (routerId: number) => {
+    const executeOnRouter = async (routerId: string) => {
       try {
         let op = 'set';
         if (action === 'show') op = 'showConfig';
@@ -2008,7 +2008,7 @@ function ConfigView({ routers, token }: { routers: Router[]; token: string }) {
 
       <div className="space-y-4">
         {Object.entries(outputs).map(([routerId, output]) => {
-          const router = routers.find(r => r.id === Number(routerId));
+          const router = routers.find(r => r.id === routerId);
           return (
             <Card key={routerId} title={`Output: ${router?.name || routerId}`} className="bg-zinc-900 border-zinc-800">
               <div className="max-h-[300px] overflow-y-auto">
@@ -2026,7 +2026,7 @@ function ConfigView({ routers, token }: { routers: Router[]; token: string }) {
 
 function LogsView({ token }: { token: string }) {
   const [logs, setLogs] = useState<AuditLog[]>([]);
-  const [expandedLog, setExpandedLog] = useState<number | null>(null);
+  const [expandedLog, setExpandedLog] = useState<string | null>(null);
   const [showFilter, setShowFilter] = useState(false);
   const [filters, setFilters] = useState({
     user: '',
@@ -2048,7 +2048,7 @@ function LogsView({ token }: { token: string }) {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
-    setLogs(data);
+    if (Array.isArray(data)) setLogs(data);
   }, [token, filters]);
 
   useEffect(() => {
@@ -2128,9 +2128,9 @@ function LogsView({ token }: { token: string }) {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <div className="w-6 h-6 rounded-full bg-zinc-100 flex items-center justify-center text-[10px] font-bold text-zinc-500">
-                          {log.username[0].toUpperCase()}
+                          {(log.username?.[0] || '?').toUpperCase()}
                         </div>
-                        <span className="text-xs font-bold text-zinc-900">{log.username}</span>
+                        <span className="text-xs font-bold text-zinc-900">{log.username || 'Deleted User'}</span>
                       </div>
                     </td>
                     <td className="px-6 py-4">
