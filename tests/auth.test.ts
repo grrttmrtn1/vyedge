@@ -26,4 +26,18 @@ describe('Auth', () => {
     expect(res.body.token).toBeDefined();
     expect(res.body.user.username).toBe('admin');
   });
+
+  it('returns 429 after 10 failed login attempts', async () => {
+    const failedLogin = () =>
+      request(app)
+        .post('/api/login')
+        .send({ username: 'admin', password: 'wrong' });
+
+    for (let i = 0; i < 10; i++) {
+      await failedLogin();
+    }
+
+    const res = await failedLogin();
+    expect(res.status).toBe(429);
+  });
 });

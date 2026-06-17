@@ -7,6 +7,7 @@ import axios from "axios";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import rateLimit from "express-rate-limit";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const DB_PATH = process.env.DB_PATH || "vyos_manager.db";
@@ -360,8 +361,18 @@ export async function createApp() {
     next();
   });
 
+  // Rate Limiter for Login
+  const loginRateLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+    keyGenerator: (req: any) => req.clientIp || req.ip,
+  });
+
   // API Routes
-  app.post("/api/login", (req: any, res) => {
+  app.post("/api/login", loginRateLimiter, (req: any, res) => {
     const { username, password } = req.body;
     const user: any = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
     if (user && bcrypt.compareSync(password, user.password)) {
