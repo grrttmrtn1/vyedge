@@ -344,10 +344,48 @@ const authorize = (roles: string[]) => (req: any, res: any, next: any) => {
   next();
 };
 
+function encrypt(plaintext: string): string {
+  if (!plaintext) return plaintext;
+  const key = Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  // Format: base64(iv[12 bytes] + tag[16 bytes] + ciphertext)
+  return Buffer.concat([iv, tag, encrypted]).toString('base64');
+}
+
+function decrypt(ciphertext: string): string {
+  if (!ciphertext) return ciphertext;
+  try {
+    const key = Buffer.from(process.env.ENCRYPTION_KEY!, 'hex');
+    const data = Buffer.from(ciphertext, 'base64');
+    const iv = data.subarray(0, 12);
+    const tag = data.subarray(12, 28);
+    const encrypted = data.subarray(28);
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(tag);
+    return decipher.update(encrypted) + decipher.final('utf8');
+  } catch {
+    return '';
+  }
+}
+
 export async function createApp() {
   if (!process.env.JWT_SECRET) {
     throw new Error(
       'FATAL: JWT_SECRET environment variable is required. Set it to a long random string (e.g., openssl rand -hex 32).'
+    );
+  }
+
+  if (!process.env.ENCRYPTION_KEY) {
+    throw new Error(
+      'FATAL: ENCRYPTION_KEY environment variable is required (must be exactly 64 hex characters, e.g., openssl rand -hex 32).'
+    );
+  }
+  if (!/^[0-9a-f]{64}$/i.test(process.env.ENCRYPTION_KEY)) {
+    throw new Error(
+      'FATAL: ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 bytes for AES-256-GCM).'
     );
   }
 
@@ -804,7 +842,11 @@ export async function createApp() {
   // VPN Tunnels
   app.get("/api/vpn", authenticate, (req, res) => {
     const tunnels = db.prepare("SELECT * FROM vpn_tunnels ORDER BY created_at DESC").all();
-    res.json(tunnels);
+    const decrypted = tunnels.map((t: any) => ({
+      ...t,
+      shared_secret: decrypt(t.shared_secret),
+    }));
+    res.json(decrypted);
   });
 
   app.post("/api/vpn", authenticate, authorize(["admin", "operator"]), (req: any, res) => {
@@ -816,7 +858,7 @@ export async function createApp() {
       INSERT INTO vpn_tunnels (
         id, name, remote_peer, local_address, shared_secret, encryption, status
       ) VALUES (?, ?, ?, ?, ?, ?, ?)
-    `).run(tunnelId, name, remote_peer, local_address, shared_secret, encryption, 'up');
+    `).run(tunnelId, name, remote_peer, local_address, encrypt(shared_secret || ''), encryption, 'up');
     
     db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
       .run(crypto.randomUUID(), req.user.id, 'add_vpn_tunnel', `Established VPN tunnel: ${name} to ${remote_peer}`, req.clientIp);
