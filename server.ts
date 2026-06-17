@@ -389,6 +389,24 @@ export async function createApp() {
     );
   }
 
+  // Warn loudly if TLS verification is disabled
+  if (process.env.ALLOW_SELF_SIGNED === 'true') {
+    const msg = [
+      '╔══════════════════════════════════════════════════════════════════╗',
+      '║  WARNING: ALLOW_SELF_SIGNED=true — TLS verification is DISABLED  ║',
+      '║  All VyOS router connections will accept self-signed certificates  ║',
+      '║  Do NOT use this setting in production. For production, either:   ║',
+      '║    - Add your CA cert via NODE_EXTRA_CA_CERTS env var             ║',
+      '║    - Or install the router cert in the system trust store         ║',
+      '╚══════════════════════════════════════════════════════════════════╝',
+    ].join('\n');
+    console.warn(msg);
+    if (process.env.NODE_ENV === 'production') {
+      console.error('FATAL: ALLOW_SELF_SIGNED=true is not permitted in production (NODE_ENV=production). Remove this flag or set NODE_EXTRA_CA_CERTS to your CA certificate path.');
+      process.exit(1);
+    }
+  }
+
   const app = express();
   app.use(express.json());
 
