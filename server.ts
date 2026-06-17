@@ -293,7 +293,56 @@ if (!adminExists) {
   db.prepare("INSERT INTO users (id, username, password, role) VALUES (?, ?, ?, ?)").run(adminId, "admin", hashedPassword, "admin");
 }
 
-async function startServer() {
+// Password Validation
+const validatePassword = (password: string) => {
+  const minLength = 8;
+  const hasUpperCase = /[A-Z]/.test(password);
+  const hasLowerCase = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+
+  if (password.length < minLength) return "Password must be at least 8 characters long";
+  if (!hasUpperCase) return "Password must contain at least one uppercase letter";
+  if (!hasLowerCase) return "Password must contain at least one lowercase letter";
+  if (!hasNumber) return "Password must contain at least one number";
+  if (!hasSpecial) return "Password must contain at least one special character";
+  return null;
+};
+
+const authenticate = (req: any, res: any, next: any) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  const ip = req.clientIp;
+
+  console.log(`[AUTH] ${req.method} ${req.url} from ${ip}`);
+
+  if (!token) {
+    console.warn(`[AUTH] No token for ${req.method} ${req.url}`);
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  try {
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    console.log(`[AUTH] User: ${req.user.username}, Role: ${req.user.role}, Tenant: ${req.user.tenant}`);
+    // Ensure tenant is always set to at least 'default'
+    if (!req.user.tenant) req.user.tenant = 'default';
+    next();
+  } catch (err) {
+    console.warn(`[AUTH] Invalid token for ${req.method} ${req.url}: ${err}`);
+    res.status(401).json({ error: "Invalid token" });
+  }
+};
+
+// RBAC Middleware
+const authorize = (roles: string[]) => (req: any, res: any, next: any) => {
+  console.log(`[AUTH] Authorizing ${req.user.username} (Role: ${req.user.role}) for ${req.method} ${req.url}. Required: ${roles}`);
+  if (!roles.includes(req.user.role)) {
+    console.warn(`[AUTH] Forbidden: ${req.user.username} has role ${req.user.role}, but needs ${roles}`);
+    return res.status(403).json({ error: "Forbidden" });
+  }
+  next();
+};
+
+export async function createApp() {
   const app = express();
   app.use(express.json());
 
@@ -304,54 +353,6 @@ async function startServer() {
     req.clientIp = typeof ip === 'string' ? ip.split(',')[0].trim() : ip;
     next();
   });
-
-  // Password Validation
-  const validatePassword = (password: string) => {
-    const minLength = 8;
-    const hasUpperCase = /[A-Z]/.test(password);
-    const hasLowerCase = /[a-z]/.test(password);
-    const hasNumber = /[0-9]/.test(password);
-    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
-    
-    if (password.length < minLength) return "Password must be at least 8 characters long";
-    if (!hasUpperCase) return "Password must contain at least one uppercase letter";
-    if (!hasLowerCase) return "Password must contain at least one lowercase letter";
-    if (!hasNumber) return "Password must contain at least one number";
-    if (!hasSpecial) return "Password must contain at least one special character";
-    return null;
-  };
-  const authenticate = (req: any, res: any, next: any) => {
-    const token = req.headers.authorization?.split(" ")[1];
-    const ip = req.clientIp;
-
-    console.log(`[AUTH] ${req.method} ${req.url} from ${ip}`);
-
-    if (!token) {
-      console.warn(`[AUTH] No token for ${req.method} ${req.url}`);
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    try {
-      const decoded: any = jwt.verify(token, JWT_SECRET);
-      req.user = decoded;
-      console.log(`[AUTH] User: ${req.user.username}, Role: ${req.user.role}, Tenant: ${req.user.tenant}`);
-      // Ensure tenant is always set to at least 'default'
-      if (!req.user.tenant) req.user.tenant = 'default';
-      next();
-    } catch (err) {
-      console.warn(`[AUTH] Invalid token for ${req.method} ${req.url}: ${err}`);
-      res.status(401).json({ error: "Invalid token" });
-    }
-  };
-
-  // RBAC Middleware
-  const authorize = (roles: string[]) => (req: any, res: any, next: any) => {
-    console.log(`[AUTH] Authorizing ${req.user.username} (Role: ${req.user.role}) for ${req.method} ${req.url}. Required: ${roles}`);
-    if (!roles.includes(req.user.role)) {
-      console.warn(`[AUTH] Forbidden: ${req.user.username} has role ${req.user.role}, but needs ${roles}`);
-      return res.status(403).json({ error: "Forbidden" });
-    }
-    next();
-  };
 
   // API Routes
   app.post("/api/login", (req: any, res) => {
@@ -995,7 +996,19 @@ async function startServer() {
     res.json(logs);
   });
 
-  // Vite middleware for development
+  return app;
+}
+
+async function startServer() {
+  let app: import('express').Express;
+  try {
+    app = await createApp();
+  } catch (err: any) {
+    console.error(err.message);
+    process.exit(1);
+  }
+
+  // Vite middleware (dev only)
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
       server: { middlewareMode: true },
