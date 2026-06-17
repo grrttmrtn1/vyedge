@@ -7,6 +7,7 @@ import axios from "axios";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import https from "https";
 import rateLimit from "express-rate-limit";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
@@ -874,6 +875,12 @@ export async function createApp() {
     }
   });
 
+  // Configure HTTPS agent for VyOS API calls
+  const allowSelfSigned = process.env.ALLOW_SELF_SIGNED === 'true';
+  const vyosHttpsAgent = new https.Agent({
+    rejectUnauthorized: !allowSelfSigned,
+  });
+
   // VyOS API Proxy
   app.post("/api/vyos/:routerId/:action", authenticate, authorize(["admin", "operator"]), async (req: any, res) => {
     const { routerId, action } = req.params;
@@ -903,6 +910,7 @@ export async function createApp() {
       const response = await axios.post(`${router.url}/${vyosEndpoint}`, formData, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         timeout: 15000,
+        httpsAgent: vyosHttpsAgent,
       });
 
       db.prepare("INSERT INTO audit_logs (id, user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?)")
@@ -963,6 +971,7 @@ export async function createApp() {
       await axios.post(`${router.url}/retrieve`, formData, {
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         timeout: 5000,
+        httpsAgent: vyosHttpsAgent,
       });
 
       db.prepare("UPDATE routers SET status = 'online', last_check = CURRENT_TIMESTAMP WHERE id = ?").run(req.params.id);
