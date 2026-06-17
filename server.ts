@@ -20,6 +20,8 @@ if (dbDir !== "." && !fs.existsSync(dbDir)) {
 }
 
 const db = new Database(DB_PATH);
+db.pragma('journal_mode = WAL');
+db.pragma('synchronous = NORMAL');
 db.pragma('foreign_keys = ON');
 
 // Initialize Database
