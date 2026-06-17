@@ -7,3 +7,8 @@ coverage/
 .env*
 !.env.example
 backups/
+
+# SQLite database files
+*.db
+*.db-shm
+*.db-wal
