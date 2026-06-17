@@ -369,7 +369,7 @@ export async function createApp() {
     message: { error: 'Too many login attempts. Please try again in 15 minutes.' },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req: any) => req.clientIp || req.ip,
+    keyGenerator: (req: any) => req.socket.remoteAddress || '::1',
   });
 
   // API Routes
