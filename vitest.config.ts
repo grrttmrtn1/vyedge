@@ -7,5 +7,6 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     testTimeout: 10000,
     passWithNoTests: true,
+    maxWorkers: 1,
   },
 });

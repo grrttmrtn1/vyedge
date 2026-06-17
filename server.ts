@@ -8,7 +8,7 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 
-const JWT_SECRET = process.env.JWT_SECRET || "vyos-enterprise-secret-key";
+const JWT_SECRET = process.env.JWT_SECRET!;
 const DB_PATH = process.env.DB_PATH || "vyos_manager.db";
 
 // Ensure data directory exists if DB_PATH is in one
@@ -343,6 +343,12 @@ const authorize = (roles: string[]) => (req: any, res: any, next: any) => {
 };
 
 export async function createApp() {
+  if (!process.env.JWT_SECRET) {
+    throw new Error(
+      'FATAL: JWT_SECRET environment variable is required. Set it to a long random string (e.g., openssl rand -hex 32).'
+    );
+  }
+
   const app = express();
   app.use(express.json());
 
