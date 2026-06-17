@@ -57,6 +57,7 @@ interface Router {
   name: string;
   url: string;
   status: string;
+  group_id?: string;
 }
 
 interface AuditLog {
@@ -167,7 +168,7 @@ export default function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem('nexus_token'));
   console.log("[UI] App State: token exists:", !!token);
   const [user, setUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'routers' | 'config' | 'logs' | 'settings' | 'users' | 'browser' | 'map'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'routers' | 'config' | 'logs' | 'settings' | 'users' | 'browser'>('dashboard');
   const [routers, setRouters] = useState<Router[]>([]);
   const [groups, setGroups] = useState<any[]>([]);
   console.log("[UI] App Render: current groups count:", groups.length);
@@ -233,30 +234,32 @@ export default function App() {
       fetchRouters();
       fetchLogs();
       fetchGroups();
-      
-      // Debugging helpers
-      (window as any).VyEdgeDebug = {
-        fetchGroups,
-        fetchRouters,
-        deleteGroup: async (id: number) => {
-          console.log(`[DEBUG] Manually deleting group ${id}`);
-          const res = await fetch(`/api/router-groups/${id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          console.log(`[DEBUG] Response:`, await res.json());
-          fetchGroups();
-        },
-        deleteRouter: async (id: number) => {
-          console.log(`[DEBUG] Manually deleting router ${id}`);
-          const res = await fetch(`/api/routers/${id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          console.log(`[DEBUG] Response:`, await res.json());
-          fetchRouters();
-        }
-      };
+
+      // Debugging helpers - only in DEV mode
+      if (import.meta.env.DEV) {
+        (window as any).VyEdgeDebug = {
+          fetchGroups,
+          fetchRouters,
+          deleteGroup: async (id: string) => {
+            console.log(`[DEBUG] Manually deleting group ${id}`);
+            const res = await fetch(`/api/router-groups/${id}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            console.log(`[DEBUG] Response:`, await res.json());
+            fetchGroups();
+          },
+          deleteRouter: async (id: string) => {
+            console.log(`[DEBUG] Manually deleting router ${id}`);
+            const res = await fetch(`/api/routers/${id}`, {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            console.log(`[DEBUG] Response:`, await res.json());
+            fetchRouters();
+          }
+        };
+      }
 
       const savedUser = localStorage.getItem('nexus_user');
       if (savedUser) setUser(JSON.parse(savedUser));
@@ -639,20 +642,20 @@ function UserAdminView({ token, currentUser, groups, onRefreshRouters, onRefresh
     }
   };
 
-  const handleDeleteGroup = async (id: number) => {
+  const handleDeleteGroup = async (id: string) => {
     console.log(`[UI] UserAdminView: Attempting to delete group ${id}`);
     // Removed window.confirm due to potential iframe restrictions
     console.log(`[UI] UserAdminView: Proceeding with deletion (confirm bypassed)`);
-    
+
     console.log(`[UI] UserAdminView: Sending DELETE request to /api/router-groups/${id}`);
     try {
-      const res = await fetch(`/api/router-groups/${id}`, { 
-        method: 'DELETE', 
-        headers: { Authorization: `Bearer ${token}` } 
+      const res = await fetch(`/api/router-groups/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       console.log(`[UI] UserAdminView: DELETE response status: ${res.status}`);
-      
+
       if (res.ok) {
         const data = await res.json();
         console.log(`[UI] UserAdminView: Delete success. Server reports ${data.remaining} groups remaining.`);
@@ -671,7 +674,7 @@ function UserAdminView({ token, currentUser, groups, onRefreshRouters, onRefresh
     }
   };
 
-  const handleDeleteUser = async (id: number) => {
+  const handleDeleteUser = async (id: string) => {
     if (!confirm("Delete this user?")) return;
     await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     handleFetchData();
@@ -1288,7 +1291,7 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
     }
   };
 
-  const handleDeleteGroup = async (id: number) => {
+  const handleDeleteGroup = async (id: string) => {
     console.log(`[UI] Attempting to delete group ${id}`);
     // Removed window.confirm due to potential iframe restrictions
     console.log(`[UI] Proceeding with deletion (confirm bypassed)`);
@@ -1298,9 +1301,9 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       console.log(`[UI] DELETE response status: ${res.status}`);
-      
+
       if (res.ok) {
         const data = await res.json();
         console.log(`[UI] Delete success. Server reports ${data.remaining} groups remaining.`);
@@ -1362,15 +1365,15 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
 
   const openEdit = (router: Router) => {
     setShowEdit(router);
-    setEditForm({ 
-      name: router.name, 
-      url: router.url, 
+    setEditForm({
+      name: router.name,
+      url: router.url,
       api_key: '', // Don't show existing key for security
-      group_id: router.group_id?.toString() || '' 
+      group_id: router.group_id || ''
     });
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     console.log(`[UI] Attempting to delete router ${id}`);
     // Removed window.confirm due to potential iframe restrictions
     console.log(`[UI] Proceeding with router deletion (confirm bypassed)`);
@@ -1396,7 +1399,7 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
     }
   };
 
-  const checkStatus = async (id: number) => {
+  const checkStatus = async (id: string) => {
     setChecking(id);
     try {
       await fetch(`/api/routers/${id}/check`, {
@@ -1737,7 +1740,7 @@ function ConfigBrowserView({ routers, token }: { routers: Router[]; token: strin
   );
 }
 
-function ConfigNode({ data, path, routerId, token }: { data: any; path: string[]; routerId: number; token: string }) {
+function ConfigNode({ data, path, routerId, token }: { data: any; path: string[]; routerId: string; token: string }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
@@ -1925,8 +1928,8 @@ function ConfigView({ routers, token }: { routers: Router[]; token: string }) {
     }
   };
 
-  const toggleRouter = (id: number) => {
-    setSelectedRouters(prev => 
+  const toggleRouter = (id: string) => {
+    setSelectedRouters(prev =>
       prev.includes(id) ? prev.filter(rid => rid !== id) : [...prev, id]
     );
   };
