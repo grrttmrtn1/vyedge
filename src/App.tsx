@@ -38,6 +38,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { InlineConfirm } from './components/InlineConfirm';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -67,6 +68,7 @@ interface AuditLog {
   router_name: string;
   details: string;
   timestamp: string;
+  ip_address?: string;
 }
 
 // --- Components ---
@@ -545,6 +547,8 @@ function UserAdminView({ token, currentUser, groups, onRefreshRouters, onRefresh
   const [userGroups, setUserGroups] = useState<string[]>([]);
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<string | null>(null);
+  const [pendingDeleteGroupAdmin, setPendingDeleteGroupAdmin] = useState<string | null>(null);
 
   const handleFetchData = useCallback(async () => {
     try {
@@ -791,9 +795,17 @@ function UserAdminView({ token, currentUser, groups, onRefreshRouters, onRefresh
                     <span className="text-sm font-bold text-zinc-900">{g.name}</span>
                     <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest">ID: {g.id}</span>
                   </div>
-                  <Button variant="ghost" className="p-2 h-auto text-zinc-300 hover:text-red-500 transition-colors" onClick={() => handleDeleteGroup(g.id)}>
-                    <Trash2 size={14} />
-                  </Button>
+                  {pendingDeleteGroupAdmin === g.id ? (
+                    <InlineConfirm
+                      message="Delete group?"
+                      onConfirm={() => { handleDeleteGroup(g.id); setPendingDeleteGroupAdmin(null); }}
+                      onCancel={() => setPendingDeleteGroupAdmin(null)}
+                    />
+                  ) : (
+                    <button onClick={() => setPendingDeleteGroupAdmin(g.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               ))}
               {groups.length === 0 && <p className="text-center py-4 text-zinc-400 text-xs">No groups defined</p>}
@@ -861,9 +873,17 @@ function UserAdminView({ token, currentUser, groups, onRefreshRouters, onRefresh
                         <Lock size={14} />
                       </Button>
                       {u.id !== currentUser.id && (
-                        <Button variant="ghost" className="p-1 h-auto text-zinc-400 hover:text-red-500" onClick={() => handleDeleteUser(u.id)}>
-                          <Trash2 size={14} />
-                        </Button>
+                        pendingDeleteUser === u.id ? (
+                          <InlineConfirm
+                            message="Delete user?"
+                            onConfirm={() => { handleDeleteUser(u.id); setPendingDeleteUser(null); }}
+                            onCancel={() => setPendingDeleteUser(null)}
+                          />
+                        ) : (
+                          <button onClick={() => setPendingDeleteUser(u.id)} className="p-1 text-zinc-400 hover:text-red-500">
+                            <Trash2 size={14} />
+                          </button>
+                        )
                       )}
                     </div>
                   </td>
@@ -1132,7 +1152,7 @@ function RouterManagementView({ router, token, onBack }: { router: Router; token
         <div className="flex items-center gap-4">
           <div className="text-right">
             <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Last Sync</p>
-            <p className="text-xs font-bold text-zinc-900">2 minutes ago</p>
+            <p className="text-xs font-bold text-zinc-400 italic">Live data in Phase 4</p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => {
             const tab = tabs.find(t => t.id === activeTab);
@@ -1228,6 +1248,8 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
   const [error, setError] = useState<string | null>(null);
   const [checking, setChecking] = useState<string | null>(null);
   const [selectedRouter, setSelectedRouter] = useState<Router | null>(null);
+  const [pendingDeleteRouter, setPendingDeleteRouter] = useState<string | null>(null);
+  const [pendingDeleteGroup, setPendingDeleteGroup] = useState<string | null>(null);
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1522,9 +1544,17 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
                     <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">ID: {g.id} • {g.node_count || 0} Nodes</p>
                   </div>
                   {currentUser.role === 'admin' && (
-                    <Button variant="ghost" className="p-2 h-auto text-zinc-300 group-hover:text-red-500" onClick={() => handleDeleteGroup(g.id)}>
-                      <Trash2 size={14} />
-                    </Button>
+                    pendingDeleteGroup === g.id ? (
+                      <InlineConfirm
+                        message="Delete group?"
+                        onConfirm={() => { handleDeleteGroup(g.id); setPendingDeleteGroup(null); }}
+                        onCancel={() => setPendingDeleteGroup(null)}
+                      />
+                    ) : (
+                      <button onClick={() => setPendingDeleteGroup(g.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                        <Trash2 size={14} />
+                      </button>
+                    )
                   )}
                 </div>
               ))}
@@ -1550,9 +1580,17 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
                   <Button variant="ghost" size="sm" className="p-2 h-auto" onClick={() => openEdit(router)}>
                     <Edit size={14} className="text-zinc-400 hover:text-zinc-900 transition-colors" />
                   </Button>
-                  <Button variant="ghost" size="sm" className="p-2 h-auto" onClick={() => handleDelete(router.id)}>
-                    <Trash2 size={14} className="text-zinc-400 hover:text-red-500 transition-colors" />
-                  </Button>
+                  {pendingDeleteRouter === router.id ? (
+                    <InlineConfirm
+                      message="Delete?"
+                      onConfirm={() => { handleDelete(router.id); setPendingDeleteRouter(null); }}
+                      onCancel={() => setPendingDeleteRouter(null)}
+                    />
+                  ) : (
+                    <button onClick={() => setPendingDeleteRouter(router.id)} className="p-2 text-zinc-400 hover:text-red-500 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
               
@@ -1564,11 +1602,11 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
               <div className="mt-6 grid grid-cols-2 gap-4">
                 <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100">
                   <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">CPU Load</p>
-                  <p className="text-sm font-bold text-zinc-900">{router.status === 'online' ? '12%' : '--'}</p>
+                  <div className="h-4 bg-zinc-200 rounded animate-pulse w-12" />
                 </div>
                 <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100">
                   <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Uptime</p>
-                  <p className="text-sm font-bold text-zinc-900">{router.status === 'online' ? '14d 2h' : '--'}</p>
+                  <div className="h-4 bg-zinc-200 rounded animate-pulse w-16" />
                 </div>
               </div>
               
@@ -1590,7 +1628,7 @@ function RoutersView({ routers, groups, onRefresh, onRefreshGroups, token, onMan
                   )} />
                   <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">{router.status}</span>
                 </div>
-                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">v1.4.0-RC3</span>
+                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">VyOS</span>
               </div>
             </Card>
           ))}
@@ -2069,7 +2107,29 @@ function LogsView({ token }: { token: string }) {
           <p className="text-sm text-zinc-500">Immutable record of all administrative actions across the fleet.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              const headers = ['Timestamp', 'Operator', 'Action', 'Target Node', 'Details', 'IP Address'];
+              const rows = logs.map(log => [
+                new Date(log.timestamp).toISOString(),
+                log.username || 'Unknown',
+                log.action,
+                log.router_name || 'System',
+                `"${(log.details || '').replace(/"/g, '""')}"`,
+                log.ip_address || ''
+              ]);
+              const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+              const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `vyedge-audit-logs-${new Date().toISOString().split('T')[0]}.csv`;
+              a.click();
+              URL.revokeObjectURL(url);
+            }}
+          >
             <Download size={14} /> Export CSV
           </Button>
           <Button variant={showFilter ? 'primary' : 'secondary'} size="sm" onClick={() => setShowFilter(!showFilter)}>
