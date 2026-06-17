@@ -894,36 +894,36 @@ export async function createApp() {
   });
 
   // System Actions
-  app.post("/api/system/backup", authenticate, authorize(["admin"]), (req: any, res) => {
+  app.post("/api/system/backup", authenticate, authorize(["admin"]), async (req: any, res) => {
     try {
-      // Simulate backup process
-      const backupId = crypto.randomUUID();
+      const backupDir = process.env.BACKUP_DIR || './backups';
+      const { mkdirSync, existsSync, unlinkSync } = await import('fs');
+      if (!existsSync(backupDir)) mkdirSync(backupDir, { recursive: true });
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupFilename = `vyedge-backup-${timestamp}.db`;
+      const backupPath = path.join(backupDir, backupFilename);
+
+      await db.backup(backupPath);
+
       db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
-        .run(crypto.randomUUID(), req.user.id, 'system_backup', `Manual system backup created: ${backupId}`, req.clientIp);
-      
-      res.json({ 
-        success: true, 
-        message: "Backup created successfully. Snapshot ID: " + backupId.substring(0, 8), 
-        timestamp: new Date().toISOString(),
-        downloadUrl: `/api/system/download-backup/${backupId}`
+        .run(crypto.randomUUID(), req.user.id, 'system_backup', `Backup downloaded: ${backupFilename}`, req.clientIp);
+
+      res.download(backupPath, backupFilename, (err) => {
+        try { unlinkSync(backupPath); } catch {}
+        if (err && !res.headersSent) {
+          res.status(500).json({ error: 'Failed to send backup file' });
+        }
       });
     } catch (err: any) {
-      res.status(500).json({ error: err.message });
+      res.status(500).json({ error: 'Backup failed: ' + err.message });
     }
   });
 
   app.post("/api/system/restore", authenticate, authorize(["admin"]), (req: any, res) => {
-    try {
-      db.prepare("INSERT INTO audit_logs (id, user_id, action, details, ip_address) VALUES (?, ?, ?, ?, ?)")
-        .run(crypto.randomUUID(), req.user.id, 'system_restore', 'System restoration initiated from latest snapshot', req.clientIp);
-      
-      res.json({ 
-        success: true, 
-        message: "System restoration initiated. The manager will restart and be available in approximately 60 seconds." 
-      });
-    } catch (err: any) {
-      res.status(500).json({ error: err.message });
-    }
+    res.status(503).json({
+      error: 'Restore is not yet available in this version. Download a backup file and restore it manually by replacing the database file.',
+    });
   });
 
   app.post("/api/system/restart", authenticate, authorize(["admin"]), (req: any, res) => {
