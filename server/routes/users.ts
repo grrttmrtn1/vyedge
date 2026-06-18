@@ -16,6 +16,10 @@ const UpdatePasswordSchema = z.object({
   password: z.string().min(8, 'Password must be at least 8 characters'),
 });
 
+const UpdateGroupsSchema = z.object({
+  groupIds: z.array(z.string()),
+});
+
 const router = Router();
 
 router.get('/', authenticate, authorize(['admin']), (_req, res) => {
@@ -98,7 +102,12 @@ router.get('/:id/groups', authenticate, authorize(['admin']), (req, res) => {
 });
 
 router.put('/:id/groups', authenticate, authorize(['admin']), (req: any, res) => {
-  const { groupIds } = req.body;
+  const result = UpdateGroupsSchema.safeParse(req.body);
+  if (!result.success) {
+    return res.status(400).json({ error: 'Invalid request', fields: result.error.flatten().fieldErrors });
+  }
+
+  const { groupIds } = result.data;
   const userId = req.params.id;
 
   const tx = db.transaction(() => {
