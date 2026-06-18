@@ -44,6 +44,7 @@ export interface AuditLog {
   details: string;
   ip_address: string;
   timestamp: string;
+  router_name?: string;
 }
 
 export interface Router {

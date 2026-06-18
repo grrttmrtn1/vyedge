@@ -136,7 +136,7 @@ export function Dashboard({ routers, logs, onAddNode, onScan, onSync, onExport }
                       <span className="font-bold">{log.username}</span> <span className="text-zinc-500">executed</span> <code className="bg-zinc-100 px-1.5 py-0.5 rounded text-[10px] font-bold text-zinc-700">{log.action}</code>
                     </p>
                     <div className="flex items-center gap-2 mt-1">
-                      <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{'System'}</p>
+                      <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{log.router_name || 'System'}</p>
                       <span className="text-zinc-300">•</span>
                       <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">{new Date(log.timestamp).toLocaleTimeString()}</p>
                     </div>
