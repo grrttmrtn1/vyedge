@@ -2,6 +2,7 @@ export interface User {
   id: string;
   username: string;
   role: 'admin' | 'operator' | 'read-only';
+  groups?: string[];
 }
 
 export interface Route {
@@ -43,4 +44,32 @@ export interface AuditLog {
   details: string;
   ip_address: string;
   timestamp: string;
+}
+
+export interface Router {
+  id: string;
+  name: string;
+  url: string;
+  status: string;
+  group_id?: string;
+}
+
+export interface RouterGroup {
+  id: string;
+  name: string;
+  tenant_id?: string;
+  node_count?: number;
+}
+
+export interface SystemInfo {
+  uptime: number;
+  version: string;
+  node_version: string;
+  memory: NodeJS.MemoryUsage;
+  platform: string;
+  arch: string;
+}
+
+export interface Settings {
+  [key: string]: string | boolean | number;
 }
