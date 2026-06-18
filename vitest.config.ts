@@ -2,11 +2,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    globals: true,
     environment: 'node',
+    globals: false,
+    testTimeout: 15000,
     setupFiles: ['./tests/setup.ts'],
-    testTimeout: 10000,
-    passWithNoTests: true,
-    maxWorkers: 1,
   },
 });
