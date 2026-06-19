@@ -71,6 +71,7 @@ export default function App() {
             {activeTab === 'dashboard' && (
               <Dashboard
                 routers={routers}
+                groups={groups}
                 logs={logs}
                 onAddNode={() => setActiveTab('routers')}
                 onScan={() => { setActiveTab('logs'); toast.success('Audit scan initiated across all nodes.'); }}
