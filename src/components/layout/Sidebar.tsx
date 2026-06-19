@@ -1,7 +1,16 @@
 import React from 'react';
-import { LayoutDashboard, Settings, Shield, Terminal, Activity, Server, Database, User, LogOut } from 'lucide-react';
+import {
+  LayoutDashboard,
+  Settings,
+  Terminal,
+  Activity,
+  Server,
+  Database,
+  User,
+  LogOut,
+  Zap,
+} from 'lucide-react';
 import { NavItem } from './NavItem';
-import { Button } from '../ui/Button';
 import type { User as UserType } from '../../types';
 
 interface SidebarProps {
@@ -11,43 +20,53 @@ interface SidebarProps {
   onLogout: () => void;
 }
 
+function getRoleBadgeClass(role: string): string {
+  if (role === 'admin') return 'bg-indigo-500/20 text-indigo-300';
+  if (role === 'operator') return 'bg-amber-500/20 text-amber-300';
+  return 'bg-slate-500/20 text-slate-300';
+}
+
+function getInitials(username: string): string {
+  return username.slice(0, 2).toUpperCase();
+}
+
 export function Sidebar({ user, activeTab, onTabChange, onLogout }: SidebarProps) {
   return (
-    <aside className="w-64 border-r border-zinc-200 bg-white flex flex-col">
-      <div className="p-6 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-zinc-900 flex items-center justify-center text-white shadow-lg shadow-zinc-900/20">
-          <Shield size={18} />
+    <aside className="w-64 bg-gradient-to-b from-slate-900 to-slate-800 flex flex-col flex-shrink-0">
+      <div className="h-16 px-5 flex items-center gap-3 border-b border-white/5">
+        <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-900/50 flex-shrink-0">
+          <Zap size={16} className="text-white" />
         </div>
-        <span className="font-bold text-zinc-900 tracking-tight text-lg">Vy Edge</span>
+        <span className="font-bold text-white tracking-tight text-base">Vy Edge</span>
       </div>
 
-      <nav className="flex-1 px-4 space-y-1">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         <NavItem
-          icon={<LayoutDashboard size={18} />}
+          icon={<LayoutDashboard size={16} />}
           label="Dashboard"
           active={activeTab === 'dashboard'}
           onClick={() => onTabChange('dashboard')}
         />
         <NavItem
-          icon={<Server size={18} />}
+          icon={<Server size={16} />}
           label="Edge Fleet"
           active={activeTab === 'routers'}
           onClick={() => onTabChange('routers')}
         />
         <NavItem
-          icon={<Terminal size={18} />}
+          icon={<Terminal size={16} />}
           label="Configuration"
           active={activeTab === 'config'}
           onClick={() => onTabChange('config')}
         />
         <NavItem
-          icon={<Activity size={18} />}
+          icon={<Activity size={16} />}
           label="Audit Logs"
           active={activeTab === 'logs'}
           onClick={() => onTabChange('logs')}
         />
         <NavItem
-          icon={<Database size={18} />}
+          icon={<Database size={16} />}
           label="Config Browser"
           active={activeTab === 'browser'}
           onClick={() => onTabChange('browser')}
@@ -55,13 +74,13 @@ export function Sidebar({ user, activeTab, onTabChange, onLogout }: SidebarProps
         {user?.role === 'admin' && (
           <>
             <NavItem
-              icon={<User size={18} />}
+              icon={<User size={16} />}
               label="User Admin"
               active={activeTab === 'users'}
               onClick={() => onTabChange('users')}
             />
             <NavItem
-              icon={<Settings size={18} />}
+              icon={<Settings size={16} />}
               label="System Settings"
               active={activeTab === 'settings'}
               onClick={() => onTabChange('settings')}
@@ -70,20 +89,25 @@ export function Sidebar({ user, activeTab, onTabChange, onLogout }: SidebarProps
         )}
       </nav>
 
-      <div className="p-4 mt-auto border-t border-zinc-100">
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-zinc-50 mb-3">
-          <div className="w-8 h-8 rounded-full bg-zinc-200 flex items-center justify-center text-zinc-600">
-            <User size={16} />
+      <div className="p-3 border-t border-white/5">
+        <div className="flex items-center gap-3 px-3 py-3 rounded-lg bg-white/5 mb-2">
+          <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+            {user ? getInitials(user.username) : '??'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-zinc-900 truncate">{user?.username}</p>
-            <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">{user?.role}</p>
+            <p className="text-sm font-medium text-white truncate">{user?.username}</p>
+            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded inline-block mt-0.5 ${getRoleBadgeClass(user?.role ?? 'viewer')}`}>
+              {user?.role}
+            </span>
           </div>
         </div>
-        <Button variant="ghost" className="w-full justify-start text-zinc-500" onClick={onLogout}>
-          <LogOut size={16} />
-          Logout
-        </Button>
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center gap-2 px-3 py-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg text-sm font-medium transition-all"
+        >
+          <LogOut size={14} />
+          Sign out
+        </button>
       </div>
     </aside>
   );

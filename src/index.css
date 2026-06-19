@@ -8,7 +8,7 @@
 
 @layer base {
   body {
-    @apply font-sans text-zinc-900 antialiased;
+    @apply font-sans text-slate-900 antialiased bg-slate-50;
   }
 }
 
@@ -17,10 +17,9 @@
 }
 
 .data-row:hover {
-  @apply bg-zinc-50;
+  @apply bg-slate-50;
 }
 
-/* Custom scrollbar for that technical feel */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -31,13 +30,9 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-zinc-200 rounded-full hover:bg-zinc-300 transition-colors;
+  @apply bg-slate-200 rounded-full;
 }
 
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-zinc-700 hover:bg-zinc-600;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-zinc-900;
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-300;
 }

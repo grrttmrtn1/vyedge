@@ -7,27 +7,35 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode; label: string; active: boolean; onClick: () => void }) {
+function NavItem({ icon, label, active, onClick }: {
+  icon: React.ReactNode;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       onClick={onClick}
       className={cn(
-        "w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold transition-all group relative",
+        "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all relative group",
         active
-          ? "bg-zinc-900 text-white shadow-xl shadow-zinc-900/20"
-          : "text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900"
+          ? "text-white bg-white/10"
+          : "text-slate-400 hover:text-white hover:bg-white/5"
       )}
     >
-      <span className={cn("transition-colors", active ? "text-white" : "text-zinc-400 group-hover:text-zinc-900")}>
-        {icon}
-      </span>
-      {label}
       {active && (
         <motion.div
           layoutId="nav-active"
-          className="absolute left-0 w-1 h-6 bg-white rounded-full ml-1"
+          className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-indigo-400 rounded-full"
         />
       )}
+      <span className={cn(
+        "transition-colors flex-shrink-0",
+        active ? "text-white" : "text-slate-400 group-hover:text-slate-200"
+      )}>
+        {icon}
+      </span>
+      {label}
     </button>
   );
 }
