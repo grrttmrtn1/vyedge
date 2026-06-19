@@ -7,5 +7,6 @@ export default defineConfig({
     testTimeout: 15000,
     setupFiles: ['./tests/setup.ts'],
     maxWorkers: 1,
+    exclude: ['**/node_modules/**', '**/.claude/**'],
   },
 });
