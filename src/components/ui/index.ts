@@ -2,4 +2,4 @@ export { Button } from './Button';
 export { Card } from './Card';
 export { Input } from './Input';
 export { ToastContainer } from './Toast';
-// export { ConfirmModal } from './ConfirmModal'; // Task 12
+export { ConfirmModal } from './ConfirmModal';

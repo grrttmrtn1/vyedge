@@ -12,7 +12,7 @@ import { twMerge } from 'tailwind-merge';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { InlineConfirm } from '../components/InlineConfirm';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import type { User, RouterGroup } from '../types';
 
 function cn(...inputs: ClassValue[]) {
@@ -138,39 +138,27 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
   };
 
   const handleDeleteGroup = async (id: string) => {
-    console.log(`[UI] UserAdminView: Attempting to delete group ${id}`);
-    // Removed window.confirm due to potential iframe restrictions
-    console.log(`[UI] UserAdminView: Proceeding with deletion (confirm bypassed)`);
-
-    console.log(`[UI] UserAdminView: Sending DELETE request to /api/router-groups/${id}`);
     try {
       const res = await fetch(`/api/router-groups/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      console.log(`[UI] UserAdminView: DELETE response status: ${res.status}`);
-
       if (res.ok) {
-        const data = await res.json();
-        console.log(`[UI] UserAdminView: Delete success. Server reports ${data.remaining} groups remaining.`);
         setTimeout(() => {
           onRefreshGroups();
           onRefreshRouters();
         }, 300);
       } else {
         const data = await res.json();
-        console.error(`[UI] UserAdminView: DELETE failed:`, data);
         alert(data.error || "Failed to delete group");
       }
-    } catch (err: unknown) {
-      console.error("[UI] UserAdminView: Network error during deletion:", err);
+    } catch {
       alert("Network error: Could not connect to server.");
     }
   };
 
   const handleDeleteUser = async (id: string) => {
-    if (!confirm("Delete this user?")) return;
     await fetch(`/api/users/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
     handleFetchData();
   };
@@ -286,17 +274,9 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
                     <span className="text-sm font-bold text-zinc-900">{g.name}</span>
                     <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest">ID: {g.id}</span>
                   </div>
-                  {pendingDeleteGroupAdmin === g.id ? (
-                    <InlineConfirm
-                      message="Delete group?"
-                      onConfirm={() => { handleDeleteGroup(g.id); setPendingDeleteGroupAdmin(null); }}
-                      onCancel={() => setPendingDeleteGroupAdmin(null)}
-                    />
-                  ) : (
-                    <button onClick={() => setPendingDeleteGroupAdmin(g.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button onClick={() => setPendingDeleteGroupAdmin(g.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               ))}
               {groups.length === 0 && <p className="text-center py-4 text-zinc-400 text-xs">No groups defined</p>}
@@ -364,17 +344,9 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
                         <Lock size={14} />
                       </Button>
                       {u.id !== currentUser.id && (
-                        pendingDeleteUser === u.id ? (
-                          <InlineConfirm
-                            message="Delete user?"
-                            onConfirm={() => { handleDeleteUser(u.id); setPendingDeleteUser(null); }}
-                            onCancel={() => setPendingDeleteUser(null)}
-                          />
-                        ) : (
-                          <button onClick={() => setPendingDeleteUser(u.id)} className="p-1 text-zinc-400 hover:text-red-500">
-                            <Trash2 size={14} />
-                          </button>
-                        )
+                        <button onClick={() => setPendingDeleteUser(u.id)} className="p-1 text-zinc-400 hover:text-red-500">
+                          <Trash2 size={14} />
+                        </button>
                       )}
                     </div>
                   </td>
@@ -384,6 +356,30 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
           </table>
         </Card>
       )}
+
+      <ConfirmModal
+        open={!!pendingDeleteUser}
+        title="Delete User"
+        description="This will permanently remove the user and revoke all access. This action cannot be undone."
+        confirmLabel="Delete User"
+        onConfirm={() => {
+          if (pendingDeleteUser) handleDeleteUser(pendingDeleteUser);
+          setPendingDeleteUser(null);
+        }}
+        onCancel={() => setPendingDeleteUser(null)}
+      />
+
+      <ConfirmModal
+        open={!!pendingDeleteGroupAdmin}
+        title="Delete Group"
+        description="This will permanently remove the group. Users and routers assigned to this group will be unassigned. This action cannot be undone."
+        confirmLabel="Delete Group"
+        onConfirm={() => {
+          if (pendingDeleteGroupAdmin) handleDeleteGroup(pendingDeleteGroupAdmin);
+          setPendingDeleteGroupAdmin(null);
+        }}
+        onCancel={() => setPendingDeleteGroupAdmin(null)}
+      />
     </motion.div>
   );
 }

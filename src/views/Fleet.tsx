@@ -16,7 +16,7 @@ import { twMerge } from 'tailwind-merge';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
-import { InlineConfirm } from '../components/InlineConfirm';
+import { ConfirmModal } from '../components/ui/ConfirmModal';
 import type { Router, RouterGroup, User } from '../types';
 
 function cn(...inputs: ClassValue[]) {
@@ -118,32 +118,22 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
   };
 
   const handleDeleteGroup = async (id: string) => {
-    console.log(`[UI] Attempting to delete group ${id}`);
-    // Removed window.confirm due to potential iframe restrictions
-    console.log(`[UI] Proceeding with deletion (confirm bypassed)`);
     try {
-      console.log(`[UI] Sending DELETE request to /api/router-groups/${id}`);
       const res = await fetch(`/api/router-groups/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      console.log(`[UI] DELETE response status: ${res.status}`);
-
       if (res.ok) {
-        const data = await res.json();
-        console.log(`[UI] Delete success. Server reports ${data.remaining} groups remaining.`);
         setTimeout(() => {
           onRefreshGroups();
           onRefresh();
         }, 300);
       } else {
         const data = await res.json();
-        console.error(`[UI] DELETE failed:`, data);
         alert(data.error || "Failed to delete group. Please check server logs.");
       }
-    } catch (err: any) {
-      console.error("[UI] Group deletion network error:", err);
+    } catch {
       alert("Network error: Could not connect to management server.");
     }
   };
@@ -200,27 +190,19 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
   };
 
   const handleDelete = async (id: string) => {
-    console.log(`[UI] Attempting to delete router ${id}`);
-    // Removed window.confirm due to potential iframe restrictions
-    console.log(`[UI] Proceeding with router deletion (confirm bypassed)`);
     try {
-      console.log(`[UI] Sending DELETE request to /api/routers/${id}`);
       const res = await fetch(`/api/routers/${id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
-      console.log(`[UI] DELETE router response status: ${res.status}`);
       const data = await res.json();
       if (res.ok) {
-        console.log(`[UI] Router ${id} deleted successfully`);
         onRefresh();
         if (selectedRouter?.id === id) setSelectedRouter(null);
       } else {
-        console.error(`[UI] Router deletion failed:`, data);
         alert(data.error || "Failed to delete router");
       }
-    } catch (err: any) {
-      console.error("[UI] Network error during router deletion:", err);
+    } catch {
       alert("Network error: Failed to delete router");
     }
   };
@@ -348,17 +330,9 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                     <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">ID: {g.id} • {g.node_count || 0} Nodes</p>
                   </div>
                   {currentUser.role === 'admin' && (
-                    pendingDeleteGroup === g.id ? (
-                      <InlineConfirm
-                        message="Delete group?"
-                        onConfirm={() => { handleDeleteGroup(g.id); setPendingDeleteGroup(null); }}
-                        onCancel={() => setPendingDeleteGroup(null)}
-                      />
-                    ) : (
-                      <button onClick={() => setPendingDeleteGroup(g.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
-                        <Trash2 size={14} />
-                      </button>
-                    )
+                    <button onClick={() => setPendingDeleteGroup(g.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                      <Trash2 size={14} />
+                    </button>
                   )}
                 </div>
               ))}
@@ -384,17 +358,9 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                   <Button variant="ghost" size="sm" className="p-2 h-auto" onClick={() => openEdit(router)}>
                     <Edit size={14} className="text-zinc-400 hover:text-zinc-900 transition-colors" />
                   </Button>
-                  {pendingDeleteRouter === router.id ? (
-                    <InlineConfirm
-                      message="Delete?"
-                      onConfirm={() => { handleDelete(router.id); setPendingDeleteRouter(null); }}
-                      onCancel={() => setPendingDeleteRouter(null)}
-                    />
-                  ) : (
-                    <button onClick={() => setPendingDeleteRouter(router.id)} className="p-2 text-zinc-400 hover:text-red-500 transition-colors">
-                      <Trash2 size={14} />
-                    </button>
-                  )}
+                  <button onClick={() => setPendingDeleteRouter(router.id)} className="p-2 text-zinc-400 hover:text-red-500 transition-colors">
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
 
@@ -469,6 +435,30 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
           </Card>
         </motion.div>
       )}
+
+      <ConfirmModal
+        open={!!pendingDeleteRouter}
+        title="Delete Router"
+        description="This will permanently remove the router from your fleet. This action cannot be undone."
+        confirmLabel="Delete Router"
+        onConfirm={() => {
+          if (pendingDeleteRouter) handleDelete(pendingDeleteRouter);
+          setPendingDeleteRouter(null);
+        }}
+        onCancel={() => setPendingDeleteRouter(null)}
+      />
+
+      <ConfirmModal
+        open={!!pendingDeleteGroup}
+        title="Delete Group"
+        description="This will permanently remove the group. Routers in this group will be unassigned. This action cannot be undone."
+        confirmLabel="Delete Group"
+        onConfirm={() => {
+          if (pendingDeleteGroup) handleDeleteGroup(pendingDeleteGroup);
+          setPendingDeleteGroup(null);
+        }}
+        onCancel={() => setPendingDeleteGroup(null)}
+      />
     </motion.div>
   );
 }
