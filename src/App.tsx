@@ -73,7 +73,7 @@ interface AuditLog {
 
 // --- Components ---
 
-const Card = ({ children, className, title, subtitle }: { children: React.ReactNode; className?: string; title?: string; subtitle?: string }) => (
+const Card = ({ children, className, title, subtitle }: { key?: React.Key; children: React.ReactNode; className?: string; title?: string; subtitle?: string }) => (
   <div className={cn("bg-white border border-zinc-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300", className)}>
     {title && (
       <div className="px-6 py-4 border-b border-zinc-100 bg-zinc-50/30 flex flex-col gap-0.5">
