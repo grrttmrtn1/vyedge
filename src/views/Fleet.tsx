@@ -222,6 +222,10 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
     }
   };
 
+  const filteredRouters = activeGroupFilter === 'all'
+    ? routers
+    : routers.filter(r => r.group_id === activeGroupFilter);
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -367,9 +371,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-          {routers
-            .filter(r => activeGroupFilter === 'all' || r.group_id === activeGroupFilter)
-            .map(router => (
+          {filteredRouters.map(router => (
             <Card key={router.id} className={cn(
               "group transition-all relative border-l-4",
               router.status === 'online' ? "border-l-emerald-500" :
@@ -443,6 +445,11 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
               <h3 className="text-lg font-bold text-zinc-900">No edge nodes found</h3>
               <p className="text-sm text-zinc-500 max-w-xs mt-1">Start by adding your first VyOS instance to the management fleet.</p>
               <Button onClick={() => setShowAdd(true)} className="mt-6">Add First Router</Button>
+            </div>
+          )}
+          {routers.length > 0 && filteredRouters.length === 0 && (
+            <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
+              <p className="text-sm text-zinc-500 font-medium">No routers in this group</p>
             </div>
           )}
         </div>
