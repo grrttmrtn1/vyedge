@@ -12,3 +12,6 @@ backups/
 *.db
 *.db-shm
 *.db-wal
+
+# Git worktrees
+.claude/worktrees/
