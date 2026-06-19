@@ -74,3 +74,5 @@ export interface SystemInfo {
 export interface Settings {
   [key: string]: string | boolean | number;
 }
+
+export type Tab = 'dashboard' | 'routers' | 'config' | 'logs' | 'settings' | 'users' | 'browser';
