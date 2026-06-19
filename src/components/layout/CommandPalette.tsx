@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Search, Server, Layers, ArrowRight } from 'lucide-react';
 import type { Router, RouterGroup, Tab } from '../../types';
 
+const cn = (...classes: (string | false | null | undefined)[]) => classes.filter(Boolean).join(' ');
+
 interface Result {
   type: 'router' | 'group';
   id: string;
@@ -111,17 +113,13 @@ export function CommandPalette({ open, onClose, routers, groups, onTabChange, on
             {results.length > 0 && (
               <ul className="py-2 max-h-72 overflow-y-auto">
                 {results.map((result, i) => (
-                  <li key={result.id}>
+                  <li key={`${result.type}-${result.id}`}>
                     <button
                       onClick={() => handleSelect(result)}
                       onMouseEnter={() => setSelectedIndex(i)}
-                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
-                        i === selectedIndex ? 'bg-indigo-50' : 'hover:bg-slate-50'
-                      }`}
+                      className={cn('w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors', i === selectedIndex ? 'bg-indigo-50' : 'hover:bg-slate-50')}
                     >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                        result.type === 'router' ? 'bg-slate-100' : 'bg-indigo-50'
-                      }`}>
+                      <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', result.type === 'router' ? 'bg-slate-100' : 'bg-indigo-50')}>
                         {result.type === 'router'
                           ? <Server size={14} className="text-slate-500" />
                           : <Layers size={14} className="text-indigo-500" />

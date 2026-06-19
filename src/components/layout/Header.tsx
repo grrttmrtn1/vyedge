@@ -3,6 +3,8 @@ import { Search, Bell, ChevronRight, Command } from 'lucide-react';
 import { CommandPalette } from './CommandPalette';
 import type { Router, RouterGroup, Tab } from '../../types';
 
+const cn = (...classes: (string | false | null | undefined)[]) => classes.filter(Boolean).join(' ');
+
 const TAB_LABELS: Record<Tab, string> = {
   dashboard: 'Dashboard',
   routers: 'Fleet',
