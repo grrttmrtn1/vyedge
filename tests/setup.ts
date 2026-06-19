@@ -5,3 +5,4 @@
 process.env.JWT_SECRET = 'test-jwt-secret-that-is-long-enough-for-testing-purposes-12345678';
 process.env.ENCRYPTION_KEY = 'a'.repeat(64); // 64 valid hex chars
 process.env.DB_PATH = `/tmp/vyedge-test-${Date.now()}.db`;
+process.env.BACKUP_DIR = '/tmp/vyedge-test-backups';
