@@ -17,7 +17,8 @@ import { Logs } from './views/Logs';
 import { Users } from './views/Users';
 import { Settings } from './views/Settings';
 import type { Router } from './types';
-import { Search, Activity } from 'lucide-react';
+import { Search } from 'lucide-react';
+import { routersApi } from './api/routers';
 
 type Tab = 'dashboard' | 'routers' | 'config' | 'logs' | 'settings' | 'users' | 'browser';
 
@@ -99,7 +100,7 @@ export default function App() {
                 onAddNode={() => setActiveTab('routers')}
                 onScan={() => { setActiveTab('logs'); toast.success('Audit scan initiated across all nodes.'); }}
                 onSync={() => {
-                  routers.forEach(r => fetch(`/api/routers/${r.id}/check`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }));
+                  routers.forEach(r => routersApi.check(r.id).catch(() => {}));
                   toast.success('Fleet synchronization started.');
                 }}
                 onExport={() => {

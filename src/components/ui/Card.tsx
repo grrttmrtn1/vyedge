@@ -7,6 +7,9 @@ function cn(...inputs: ClassValue[]) {
 }
 
 interface CardProps {
+  // key is a React reserved prop; it's never passed to the component at runtime.
+  // It is declared here only to satisfy TS2322 at call-sites that spread JSX props
+  // including `key` (e.g. <Card key={id} ...>). React strips it before calling render.
   key?: React.Key;
   children: React.ReactNode;
   className?: string;
@@ -14,7 +17,7 @@ interface CardProps {
   subtitle?: string;
 }
 
-const Card = ({ children, className, title, subtitle, key }: CardProps) => (
+const Card = ({ children, className, title, subtitle }: CardProps) => (
   <div className={cn("bg-white border border-zinc-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300", className)}>
     {title && (
       <div className="px-6 py-4 border-b border-zinc-100 bg-zinc-50/30 flex flex-col gap-0.5">

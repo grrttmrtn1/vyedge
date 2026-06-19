@@ -63,7 +63,7 @@ export function ConfigTerminal({ routers, token }: ConfigTerminalProps) {
 
     try {
       const results = await Promise.all(selectedRouters.map(executeOnRouter));
-      const newOutputs: Record<number, any> = {};
+      const newOutputs: Record<string, any> = {};
       results.forEach(r => {
         newOutputs[r.routerId] = r.result;
       });
