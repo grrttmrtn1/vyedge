@@ -16,6 +16,7 @@ import { twMerge } from 'tailwind-merge';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import type { Router, RouterGroup, User } from '../types';
 
@@ -54,6 +55,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
   const [selectedRouter, setSelectedRouter] = useState<Router | null>(null);
   const [pendingDeleteRouter, setPendingDeleteRouter] = useState<string | null>(null);
   const [pendingDeleteGroup, setPendingDeleteGroup] = useState<string | null>(null);
+  const [activeGroupFilter, setActiveGroupFilter] = useState<string>('all');
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -247,6 +249,37 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
         </div>
       </div>
 
+      {/* Group filter tabs */}
+      {groups.length > 0 && !showManageGroups && (
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => setActiveGroupFilter('all')}
+            className={cn(
+              "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
+              activeGroupFilter === 'all'
+                ? "bg-indigo-600 text-white shadow-sm"
+                : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
+            )}
+          >
+            All ({routers.length})
+          </button>
+          {groups.map(g => (
+            <button
+              key={g.id}
+              onClick={() => setActiveGroupFilter(g.id)}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
+                activeGroupFilter === g.id
+                  ? "bg-indigo-600 text-white shadow-sm"
+                  : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
+              )}
+            >
+              {g.name} ({routers.filter(r => r.group_id === g.id).length})
+            </button>
+          ))}
+        </div>
+      )}
+
       {showAdd && (
         <Card className="p-6 border-zinc-900/10 bg-zinc-50/50">
           <form onSubmit={handleAdd} className="space-y-4">
@@ -254,17 +287,13 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
               <Input label="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Edge-01" />
               <Input label="API URL" value={form.url} onChange={e => setForm({...form, url: e.target.value})} placeholder="https://10.0.0.1" />
               <Input label="API Key" type="password" value={form.api_key} onChange={e => setForm({...form, api_key: e.target.value})} placeholder="••••••••" />
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-zinc-600">Group</label>
-                <select
-                  value={form.group_id}
-                  onChange={e => setForm({...form, group_id: e.target.value})}
-                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm"
-                >
-                  <option value="">No Group</option>
-                  {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </select>
-              </div>
+              <Select
+                label="Group"
+                value={form.group_id}
+                onChange={e => setForm({...form, group_id: e.target.value})}
+                options={groups.map(g => ({ value: g.id, label: g.name }))}
+                placeholder="No Group"
+              />
             </div>
             {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
             <div className="flex gap-2 justify-end">
@@ -283,17 +312,13 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
               <Input label="Name" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Edge-01" />
               <Input label="API URL" value={editForm.url} onChange={e => setEditForm({...editForm, url: e.target.value})} placeholder="https://10.0.0.1" />
               <Input label="API Key (Leave blank to keep current)" type="password" value={editForm.api_key} onChange={e => setEditForm({...editForm, api_key: e.target.value})} placeholder="••••••••" />
-              <div className="space-y-1">
-                <label className="text-xs font-medium text-zinc-600">Group</label>
-                <select
-                  value={editForm.group_id}
-                  onChange={e => setEditForm({...editForm, group_id: e.target.value})}
-                  className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm"
-                >
-                  <option value="">No Group</option>
-                  {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </select>
-              </div>
+              <Select
+                label="Group"
+                value={editForm.group_id}
+                onChange={e => setEditForm({...editForm, group_id: e.target.value})}
+                options={groups.map(g => ({ value: g.id, label: g.name }))}
+                placeholder="No Group"
+              />
             </div>
             {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
             <div className="flex gap-2 justify-end">
@@ -342,12 +367,20 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-          {routers.map(router => (
-            <Card key={router.id} className={cn("group transition-all relative", selectedRouter?.id === router.id && "ring-2 ring-zinc-900")}>
+          {routers
+            .filter(r => activeGroupFilter === 'all' || r.group_id === activeGroupFilter)
+            .map(router => (
+            <Card key={router.id} className={cn(
+              "group transition-all relative border-l-4",
+              router.status === 'online' ? "border-l-emerald-500" :
+              router.status === 'offline' ? "border-l-rose-500" : "border-l-amber-400",
+              selectedRouter?.id === router.id && "ring-2 ring-indigo-500"
+            )}>
               <div className="flex items-start justify-between mb-6">
                 <div className={cn(
                   "w-12 h-12 rounded-2xl flex items-center justify-center transition-colors",
-                  router.status === 'online' ? "bg-emerald-50 text-emerald-600" : "bg-zinc-100 text-zinc-400"
+                  router.status === 'online' ? "bg-emerald-50 text-emerald-700" :
+                  router.status === 'offline' ? "bg-rose-50 text-rose-700" : "bg-amber-50 text-amber-700"
                 )}>
                   <Server size={24} />
                 </div>
@@ -394,7 +427,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                   <div className={cn(
                     "w-2 h-2 rounded-full",
                     router.status === 'online' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" :
-                    router.status === 'offline' ? "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]" : "bg-zinc-300"
+                    router.status === 'offline' ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.3)]" : "bg-slate-300"
                   )} />
                   <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">{router.status}</span>
                 </div>
