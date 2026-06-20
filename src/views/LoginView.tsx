@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Shield, Activity, AlertCircle, Lock, Globe } from 'lucide-react';
+import { Zap, Network, ShieldCheck, Lock } from 'lucide-react';
 import { motion } from 'motion/react';
-import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 
@@ -10,6 +9,12 @@ interface LoginViewProps {
   loading: boolean;
   error: string | null;
 }
+
+const FEATURE_BULLETS = [
+  { icon: <Network size={14} />, text: 'Centralized VyOS fleet management' },
+  { icon: <ShieldCheck size={14} />, text: 'Encrypted API key storage' },
+  { icon: <Lock size={14} />, text: 'JWT-secured session management' },
+];
 
 export function LoginView({ onLogin, loading, error }: LoginViewProps) {
   const [form, setForm] = useState({ username: '', password: '' });
@@ -20,71 +25,96 @@ export function LoginView({ onLogin, loading, error }: LoginViewProps) {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-zinc-900 text-white mb-4 shadow-xl">
-            <Shield size={32} />
+    <div className="min-h-screen bg-slate-50 flex">
+      {/* Left panel — branding */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 to-slate-800 flex-col p-12 relative overflow-hidden">
+        <div className="flex items-center gap-3 mb-auto">
+          <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-900/50">
+            <Zap size={18} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-zinc-900 tracking-tight">Vy Edge Manager</h1>
-          <p className="text-zinc-500 text-sm font-medium">Enterprise Network Intelligence</p>
+          <span className="text-xl font-bold text-white tracking-tight">Vy Edge</span>
         </div>
 
-        <Card className="p-8 border-zinc-200/60 shadow-xl shadow-zinc-200/50">
-          <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="my-auto">
+          <h1 className="text-4xl font-bold text-white leading-tight mb-4">
+            Enterprise Network<br />Intelligence Platform
+          </h1>
+          <p className="text-slate-400 text-base leading-relaxed mb-8 max-w-sm">
+            Manage your VyOS fleet from a single control plane with real-time visibility and audit logging.
+          </p>
+          <ul className="space-y-3">
+            {FEATURE_BULLETS.map((b, i) => (
+              <li key={i} className="flex items-center gap-3 text-slate-300 text-sm">
+                <div className="w-6 h-6 rounded-lg bg-indigo-600/20 flex items-center justify-center text-indigo-400 flex-shrink-0">
+                  {b.icon}
+                </div>
+                {b.text}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <p className="text-slate-600 text-xs">v2.5.0-enterprise · Self-hosted</p>
+
+        {/* Decorative circles */}
+        <div className="absolute -bottom-24 -right-24 w-64 h-64 rounded-full bg-indigo-600/5 border border-indigo-600/10" />
+        <div className="absolute -bottom-12 -right-12 w-40 h-40 rounded-full bg-indigo-600/5 border border-indigo-600/10" />
+      </div>
+
+      {/* Right panel — form */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+          className="w-full max-w-sm"
+        >
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-3 mb-8">
+            <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
+              <Zap size={18} className="text-white" />
+            </div>
+            <span className="text-xl font-bold text-slate-900 tracking-tight">Vy Edge</span>
+          </div>
+
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-slate-900 mb-1">Sign in</h2>
+            <p className="text-slate-500 text-sm">Enter your credentials to access the management console</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
             <Input
-              label="Corporate Identity"
+              label="Username"
               value={form.username}
               onChange={e => setForm({ ...form, username: e.target.value })}
-              placeholder="Username"
+              placeholder="admin"
+              disabled={loading}
             />
             <Input
-              label="Access Key"
+              label="Password"
               type="password"
               value={form.password}
               onChange={e => setForm({ ...form, password: e.target.value })}
               placeholder="••••••••"
-            />
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="flex items-center gap-2 text-red-600 bg-red-50/50 border border-red-100 p-3 rounded-xl text-xs font-semibold"
-              >
-                <AlertCircle size={14} />
-                {error}
-              </motion.div>
-            )}
-            <Button
-              type="submit"
-              className="w-full h-11 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-white font-bold tracking-wide transition-all active:scale-[0.98]"
               disabled={loading}
-            >
-              {loading ? (
-                <div className="flex items-center gap-2">
-                  <Activity size={16} className="animate-spin" />
-                  <span>Verifying...</span>
-                </div>
-              ) : "Authorize Access"}
+            />
+
+            {error && (
+              <div className="px-4 py-3 bg-rose-50 border border-rose-200 rounded-xl">
+                <p className="text-sm text-rose-700 font-medium">{error}</p>
+              </div>
+            )}
+
+            <Button type="submit" disabled={loading} className="w-full py-2.5 mt-2">
+              {loading ? 'Signing in…' : 'Sign in'}
             </Button>
           </form>
-        </Card>
 
-        <div className="mt-8 flex flex-col items-center gap-4">
-          <div className="flex items-center gap-6 opacity-40 grayscale">
-            <Shield size={16} />
-            <Lock size={16} />
-            <Globe size={16} />
-          </div>
-          <p className="text-center text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em]">
-            Secure Gateway • End-to-End Encryption • Audit Enabled
+          <p className="text-center text-xs text-slate-400 mt-8">
+            VyEdge v2.5.0-enterprise · Self-hosted deployment
           </p>
-        </div>
-      </motion.div>
+        </motion.div>
+      </div>
     </div>
   );
 }
