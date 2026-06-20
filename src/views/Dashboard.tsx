@@ -13,7 +13,6 @@ import { AreaChart, Area, ResponsiveContainer } from 'recharts';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
 import type { Router, RouterGroup, AuditLog } from '../types';
 
 function cn(...inputs: ClassValue[]) {

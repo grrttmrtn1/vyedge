@@ -27,8 +27,8 @@ function cn(...inputs: ClassValue[]) {
 function DetailItem({ label, value }: { label: string; value: any }) {
   return (
     <div>
-      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{label}</p>
-      <p className="text-sm font-medium text-zinc-900">{value}</p>
+      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
+      <p className="text-sm font-medium text-slate-900">{value}</p>
     </div>
   );
 }
@@ -234,8 +234,8 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
     >
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-zinc-900">Router Fleet</h3>
-          <p className="text-sm text-zinc-500">Manage your VyOS instances across all tenants.</p>
+          <h3 className="text-lg font-bold text-slate-900">Router Fleet</h3>
+          <p className="text-sm text-slate-500">Manage your VyOS instances across all tenants.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setShowManageGroups(!showManageGroups)}>
@@ -285,7 +285,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
       )}
 
       {showAdd && (
-        <Card className="p-6 border-zinc-900/10 bg-zinc-50/50">
+        <Card className="p-6 border-slate-900/10 bg-slate-50/50">
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Edge-01" />
@@ -299,7 +299,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                 placeholder="No Group"
               />
             </div>
-            {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+            {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
             <div className="flex gap-2 justify-end">
               <Button variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
               <Button type="submit">Save Router</Button>
@@ -309,7 +309,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
       )}
 
       {showEdit && (
-        <Card className="p-6 border-zinc-900/10 bg-zinc-50/50">
+        <Card className="p-6 border-slate-900/10 bg-slate-50/50">
           <h4 className="text-sm font-bold mb-4">Edit Router: {showEdit.name}</h4>
           <form onSubmit={handleEdit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -324,7 +324,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                 placeholder="No Group"
               />
             </div>
-            {error && <p className="text-xs text-red-500 font-medium">{error}</p>}
+            {error && <p className="text-xs text-rose-500 font-medium">{error}</p>}
             <div className="flex gap-2 justify-end">
               <Button variant="secondary" onClick={() => setShowEdit(null)}>Cancel</Button>
               <Button type="submit">Update Router</Button>
@@ -337,7 +337,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
         <Card title="Infrastructure Groups" subtitle="Logical isolation for edge nodes">
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-zinc-900">Manage Groups</h3>
+              <h3 className="text-sm font-bold text-slate-900">Manage Groups</h3>
               <Button variant="outline" size="sm" onClick={onRefreshGroups}>
                 <RefreshCw size={12} className="mr-1" /> Refresh
               </Button>
@@ -347,25 +347,25 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                 value={groupForm.name}
                 onChange={e => setGroupForm({ name: e.target.value })}
                 placeholder="New Group Name (e.g. US-EAST-1)"
-                className="flex-1 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all"
+                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
               />
               <Button type="submit">Create Group</Button>
             </form>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {groups.map(g => (
-                <div key={g.id} className="flex items-center justify-between p-5 border border-zinc-100 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all group">
+                <div key={g.id} className="flex items-center justify-between p-5 border border-slate-100 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all group">
                   <div>
-                    <p className="text-sm font-bold text-zinc-900">{g.name}</p>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest mt-1">ID: {g.id} • {g.node_count || 0} Nodes</p>
+                    <p className="text-sm font-bold text-slate-900">{g.name}</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">ID: {g.id} • {g.node_count || 0} Nodes</p>
                   </div>
                   {currentUser.role === 'admin' && (
-                    <button onClick={() => setPendingDeleteGroup(g.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
+                    <button onClick={() => setPendingDeleteGroup(g.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
                       <Trash2 size={14} />
                     </button>
                   )}
                 </div>
               ))}
-              {groups.length === 0 && <p className="text-center py-12 text-zinc-400 text-xs col-span-full font-medium italic">No infrastructure groups defined.</p>}
+              {groups.length === 0 && <p className="text-center py-12 text-slate-400 text-xs col-span-full font-medium italic">No infrastructure groups defined.</p>}
             </div>
           </div>
         </Card>
@@ -391,27 +391,27 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                     <Activity size={14} className={cn(checking === router.id && "animate-spin")} />
                   </Button>
                   <Button variant="ghost" size="sm" className="p-2 h-auto" onClick={() => openEdit(router)}>
-                    <Edit size={14} className="text-zinc-400 hover:text-zinc-900 transition-colors" />
+                    <Edit size={14} className="text-slate-400 hover:text-slate-900 transition-colors" />
                   </Button>
-                  <button onClick={() => setPendingDeleteRouter(router.id)} className="p-2 text-zinc-400 hover:text-red-500 transition-colors">
+                  <button onClick={() => setPendingDeleteRouter(router.id)} className="p-2 text-slate-400 hover:text-rose-500 transition-colors">
                     <Trash2 size={14} />
                   </button>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <h4 className="text-lg font-bold text-zinc-900 tracking-tight">{router.name}</h4>
-                <p className="text-[10px] text-zinc-400 font-mono tracking-wider">{router.url}</p>
+                <h4 className="text-lg font-bold text-slate-900 tracking-tight">{router.name}</h4>
+                <p className="text-[10px] text-slate-400 font-mono tracking-wider">{router.url}</p>
               </div>
 
               <div className="mt-6 grid grid-cols-2 gap-4">
-                <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100">
-                  <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">CPU Load</p>
-                  <div className="h-4 bg-zinc-200 rounded animate-pulse w-12" />
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">CPU Load</p>
+                  <div className="h-4 bg-slate-200 rounded animate-pulse w-12" />
                 </div>
-                <div className="p-3 bg-zinc-50 rounded-xl border border-zinc-100">
-                  <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Uptime</p>
-                  <div className="h-4 bg-zinc-200 rounded animate-pulse w-16" />
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Uptime</p>
+                  <div className="h-4 bg-slate-200 rounded animate-pulse w-16" />
                 </div>
               </div>
 
@@ -424,32 +424,32 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                 </Button>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-zinc-100 flex items-center justify-between">
+              <div className="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "w-2 h-2 rounded-full",
                     router.status === 'online' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" :
                     router.status === 'offline' ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.3)]" : "bg-slate-300"
                   )} />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-zinc-500">{router.status}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">{router.status}</span>
                 </div>
-                <span className="text-[10px] font-bold text-zinc-300 uppercase tracking-widest">VyOS</span>
+                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">VyOS</span>
               </div>
             </Card>
           ))}
           {routers.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center text-zinc-300 mb-4">
+              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4">
                 <Server size={32} />
               </div>
-              <h3 className="text-lg font-bold text-zinc-900">No edge nodes found</h3>
-              <p className="text-sm text-zinc-500 max-w-xs mt-1">Start by adding your first VyOS instance to the management fleet.</p>
+              <h3 className="text-lg font-bold text-slate-900">No edge nodes found</h3>
+              <p className="text-sm text-slate-500 max-w-xs mt-1">Start by adding your first VyOS instance to the management fleet.</p>
               <Button onClick={() => setShowAdd(true)} className="mt-6">Add First Router</Button>
             </div>
           )}
           {routers.length > 0 && filteredRouters.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
-              <p className="text-sm text-zinc-500 font-medium">No routers in this group</p>
+              <p className="text-sm text-slate-500 font-medium">No routers in this group</p>
             </div>
           )}
         </div>
@@ -457,7 +457,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
 
       {selectedRouter && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Card title={`Router Details: ${selectedRouter.name}`} className="bg-zinc-50">
+          <Card title={`Router Details: ${selectedRouter.name}`} className="bg-slate-50">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <DetailItem label="ID" value={selectedRouter.id} />

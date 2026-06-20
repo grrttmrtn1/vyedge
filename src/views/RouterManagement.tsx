@@ -86,29 +86,29 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
 
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-8">
-      <div className="flex items-center justify-between bg-white p-6 rounded-3xl border border-zinc-200/60 shadow-sm">
+      <div className="flex items-center justify-between bg-white p-6 rounded-3xl border border-slate-200/60 shadow-sm">
         <div className="flex items-center gap-6">
           <Button variant="outline" onClick={onBack} className="w-10 h-10 p-0 rounded-xl">
             <ChevronRight className="rotate-180" size={20} />
           </Button>
-          <div className="w-px h-10 bg-zinc-100" />
+          <div className="w-px h-10 bg-slate-100" />
           <div>
             <div className="flex items-center gap-3">
-              <h3 className="text-xl font-bold text-zinc-900 tracking-tight">{router.name}</h3>
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">{router.name}</h3>
               <div className={cn(
                 "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest",
-                router.status === 'online' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                router.status === 'online' ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
               )}>
                 {router.status}
               </div>
             </div>
-            <p className="text-xs text-zinc-400 font-mono mt-0.5">{router.url}</p>
+            <p className="text-xs text-slate-400 font-mono mt-0.5">{router.url}</p>
           </div>
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Last Sync</p>
-            <p className="text-xs font-bold text-zinc-400 italic">Live data in Phase 4</p>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Last Sync</p>
+            <p className="text-xs font-bold text-slate-400 italic">Live data in Phase 4</p>
           </div>
           <Button variant="secondary" size="sm" onClick={() => {
             const tab = tabs.find(t => t.id === activeTab);
