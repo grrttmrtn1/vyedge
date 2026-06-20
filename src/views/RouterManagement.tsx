@@ -11,6 +11,9 @@ import {
   RefreshCcw,
   Activity,
   AlertCircle,
+  Copy,
+  Check,
+  BarChart2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -32,10 +35,12 @@ interface RouterManagementProps {
 }
 
 export function RouterManagement({ router, token, onBack }: RouterManagementProps) {
-  const [activeTab, setActiveTab] = useState<'interfaces' | 'routing' | 'firewall' | 'vpn' | 'services' | 'system' | 'terminal'>('interfaces');
+  const [activeTab, setActiveTab] = useState<'interfaces' | 'routing' | 'firewall' | 'vpn' | 'services' | 'system' | 'metrics' | 'terminal'>('interfaces');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pendingChanges, setPendingChanges] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const tabs = useMemo(() => [
     { id: 'interfaces', label: 'Interfaces', icon: <Network size={16} />, path: ['interfaces'] },
@@ -44,6 +49,7 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
     { id: 'vpn', label: 'VPN', icon: <Lock size={16} />, path: ['vpn'] },
     { id: 'services', label: 'Services', icon: <Zap size={16} />, path: ['service'] },
     { id: 'system', label: 'System', icon: <Cpu size={16} />, path: ['system'] },
+    { id: 'metrics', label: 'Metrics', icon: <Activity size={16} />, path: null },
     { id: 'terminal', label: 'Terminal', icon: <TerminalIcon size={16} />, path: null },
   ], []);
 
@@ -113,16 +119,16 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
         </div>
       </div>
 
-      <div className="flex gap-2 bg-zinc-100/50 p-1.5 rounded-2xl w-fit">
+      <div className="flex border-b border-slate-200 overflow-x-auto">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold transition-all",
+              "flex items-center gap-2 px-4 py-3 text-xs font-semibold whitespace-nowrap border-b-2 -mb-px transition-all",
               activeTab === tab.id
-                ? "bg-white text-zinc-900 shadow-md"
-                : "text-zinc-500 hover:text-zinc-900"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300"
             )}
           >
             {tab.icon}
@@ -132,8 +138,46 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
       </div>
 
       <div className="grid grid-cols-1 gap-6">
+        {pendingChanges && (
+          <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl">
+            <div className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0 animate-pulse" />
+            <p className="text-sm font-medium text-amber-800 flex-1">
+              Pending changes — commit and save to apply to the running config
+            </p>
+            <button
+              onClick={() => setPendingChanges(false)}
+              className="text-amber-600 hover:text-amber-800 text-xs font-semibold transition-colors"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
         {activeTab === 'terminal' ? (
-          <ConfigTerminal routers={[router]} token={token} />
+          <div className="space-y-3">
+            <ConfigTerminal routers={[router]} token={token} />
+            <div className="flex justify-end">
+              <button
+                onClick={() => setPendingChanges(true)}
+                className="text-xs text-slate-400 hover:text-amber-600 transition-colors"
+              >
+                Mark changes pending (test)
+              </button>
+            </div>
+          </div>
+        ) : activeTab === 'metrics' ? (
+          <Card>
+            <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                <BarChart2 size={24} className="text-indigo-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">Live Metrics</h3>
+                <p className="text-sm text-slate-400 mt-1 max-w-xs">
+                  Real-time CPU, memory, and interface throughput charts arrive in Phase 4 via SSE.
+                </p>
+              </div>
+            </div>
+          </Card>
         ) : (
           <Card className="p-0 overflow-hidden bg-zinc-900 border-zinc-800 shadow-2xl">
             <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
@@ -143,10 +187,24 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
                   Path: {tabs.find(t => t.id === activeTab)?.path?.join(' / ')}
                 </span>
               </div>
-              <div className="flex gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-500/20" />
-                <div className="w-2 h-2 rounded-full bg-amber-500/20" />
-                <div className="w-2 h-2 rounded-full bg-emerald-500/20" />
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(JSON.stringify(data, null, 2) || '');
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-all text-[10px] font-medium"
+                  title="Copy to clipboard"
+                >
+                  {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                  {copied ? 'Copied' : 'Copy'}
+                </button>
+                <div className="flex gap-2">
+                  <div className="w-2 h-2 rounded-full bg-red-500/20" />
+                  <div className="w-2 h-2 rounded-full bg-amber-500/20" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500/20" />
+                </div>
               </div>
             </div>
             <div className="p-8 min-h-[500px]">
@@ -187,4 +245,3 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
     </motion.div>
   );
 }
-
