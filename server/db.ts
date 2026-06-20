@@ -97,6 +97,17 @@ db.exec(`
     status TEXT DEFAULT 'down',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   );
+
+  CREATE TABLE IF NOT EXISTS alerts (
+    id TEXT PRIMARY KEY,
+    rule_id TEXT NOT NULL,
+    router_id TEXT NOT NULL,
+    metric TEXT NOT NULL,
+    value REAL NOT NULL,
+    threshold REAL NOT NULL,
+    fired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    resolved_at DATETIME
+  );
 `);
 
 const migrate = () => {
@@ -248,6 +259,7 @@ const seedSettings = [
   ['encryption_at_rest', 'true'],
   ['session_timeout', '30'],
   ['compliance_mode', 'standard'],
+  ['alert_rules', '[]'],
 ];
 const insertSetting = db.prepare('INSERT OR IGNORE INTO settings (key, value) VALUES (?, ?)');
 seedSettings.forEach(([k, v]) => insertSetting.run(k, v));

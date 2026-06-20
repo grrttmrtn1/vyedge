@@ -76,3 +76,34 @@ export interface Settings {
 }
 
 export type Tab = 'dashboard' | 'routers' | 'config' | 'logs' | 'settings' | 'users' | 'browser';
+
+export interface RouterMetrics {
+  routerId: string;
+  collectedAt: number;
+  cpu: { loadPercent: number } | null;
+  memory: { usedMb: number; totalMb: number; usedPercent: number } | null;
+  uptime: { seconds: number; str: string } | null;
+  interfaces: Array<{ name: string; rxBytes: number; txBytes: number }> | null;
+  routes: { total: number } | null;
+  vpnPeers: { active: number } | null;
+}
+
+export interface AlertRule {
+  id: string;
+  name: string;
+  metric: 'cpu' | 'memory';
+  operator: '>' | '<' | '==';
+  threshold: number;
+  cooldownMinutes: number;
+}
+
+export interface AlertEvent {
+  type: 'alert';
+  ruleId: string;
+  ruleName: string;
+  routerId: string;
+  metric: string;
+  value: number;
+  threshold: number;
+  firedAt: string;
+}
