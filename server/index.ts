@@ -11,6 +11,7 @@ import dataRouter from './routes/data.js';
 import logsRouter from './routes/logs.js';
 import settingsRouter from './routes/settings.js';
 import systemRouter from './routes/system.js';
+import streamRouter from './routes/stream.js';
 
 export async function createApp() {
   if (!process.env.JWT_SECRET) {
@@ -60,6 +61,7 @@ export async function createApp() {
   app.use('/api/logs', logsRouter);
   app.use('/api', settingsRouter);
   app.use('/api/system', systemRouter);
+  app.use('/api', streamRouter);
 
   return app;
 }
