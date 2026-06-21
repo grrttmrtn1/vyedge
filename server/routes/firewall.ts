@@ -17,7 +17,12 @@ const DraftSchema = z.object({
   value: z.string().optional(),
 });
 
-router.get('/:routerId/drafts', authenticate, (req: any, res) => {
+router.get('/:routerId/drafts', authenticate, authorize(['admin', 'operator']), (req: any, res) => {
+  const r = db.prepare(
+    'SELECT r.id FROM routers r LEFT JOIN user_router_groups urg ON r.group_id = urg.group_id WHERE r.id = ? AND r.tenant_id = ? AND (urg.user_id = ? OR ? = \'admin\')'
+  ).get(req.params.routerId, req.user.tenant, req.user.id, req.user.role) as any;
+  if (!r) return res.status(404).json({ error: 'Router not found' });
+
   const drafts = db.prepare(
     'SELECT * FROM firewall_drafts WHERE router_id = ? ORDER BY created_at ASC'
   ).all(req.params.routerId);
@@ -25,6 +30,11 @@ router.get('/:routerId/drafts', authenticate, (req: any, res) => {
 });
 
 router.post('/:routerId/drafts', authenticate, authorize(['admin', 'operator']), (req: any, res) => {
+  const r = db.prepare(
+    'SELECT r.id FROM routers r LEFT JOIN user_router_groups urg ON r.group_id = urg.group_id WHERE r.id = ? AND r.tenant_id = ? AND (urg.user_id = ? OR ? = \'admin\')'
+  ).get(req.params.routerId, req.user.tenant, req.user.id, req.user.role) as any;
+  if (!r) return res.status(404).json({ error: 'Router not found' });
+
   const result = DraftSchema.safeParse(req.body);
   if (!result.success) return res.status(400).json({ error: 'Invalid draft', fields: result.error.flatten().fieldErrors });
 
@@ -38,6 +48,11 @@ router.post('/:routerId/drafts', authenticate, authorize(['admin', 'operator']),
 });
 
 router.delete('/:routerId/drafts/:id', authenticate, authorize(['admin', 'operator']), (req: any, res) => {
+  const r = db.prepare(
+    'SELECT r.id FROM routers r LEFT JOIN user_router_groups urg ON r.group_id = urg.group_id WHERE r.id = ? AND r.tenant_id = ? AND (urg.user_id = ? OR ? = \'admin\')'
+  ).get(req.params.routerId, req.user.tenant, req.user.id, req.user.role) as any;
+  if (!r) return res.status(404).json({ error: 'Router not found' });
+
   db.prepare('DELETE FROM firewall_drafts WHERE id = ? AND router_id = ?')
     .run(req.params.id, req.params.routerId);
   res.json({ success: true });
@@ -88,7 +103,8 @@ router.post('/:routerId/deploy', authenticate, authorize(['admin', 'operator']),
 
     res.json({ applied: drafts.length });
   } catch (err: any) {
-    res.status(500).json({ error: 'Deploy failed', details: err.message });
+    console.error('Deploy error:', err);
+    res.status(502).json({ error: 'Deploy failed' });
   }
 });
 

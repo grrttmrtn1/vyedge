@@ -2,9 +2,16 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import supertest from 'supertest';
 import jwt from 'jsonwebtoken';
 import { createApp } from '../server/index.js';
+import { db } from '../server/db.js';
 
 function makeToken(payload = { id: 'u1', role: 'admin', tenant: 'default' }) {
   return jwt.sign(payload, process.env.JWT_SECRET!);
+}
+
+function seedRouter(id: string) {
+  db.prepare(
+    'INSERT OR IGNORE INTO routers (id, name, url, api_key, tenant_id) VALUES (?, ?, ?, ?, ?)'
+  ).run(id, id, 'http://localhost', 'test-key', 'default');
 }
 
 describe('Firewall drafts API', () => {
@@ -16,15 +23,15 @@ describe('Firewall drafts API', () => {
     token = makeToken();
   });
 
-  it('GET /api/firewall/:routerId/drafts returns empty array for unknown router', async () => {
+  it('GET /api/firewall/:routerId/drafts returns 404 for unknown router', async () => {
     const res = await supertest(app)
       .get('/api/firewall/nonexistent/drafts')
       .set('Authorization', `Bearer ${token}`);
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual([]);
+    expect(res.status).toBe(404);
   });
 
   it('POST /api/firewall/:routerId/drafts creates a draft', async () => {
+    seedRouter('router-1');
     const res = await supertest(app)
       .post('/api/firewall/router-1/drafts')
       .set('Authorization', `Bearer ${token}`)
@@ -35,6 +42,7 @@ describe('Firewall drafts API', () => {
 
   it('DELETE /api/firewall/:routerId/drafts/:id removes the draft', async () => {
     const routerId = `router-delete-${Date.now()}`;
+    seedRouter(routerId);
 
     // Create first
     const createRes = await supertest(app)
