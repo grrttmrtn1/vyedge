@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { AnimatePresence } from 'motion/react';
+import { ThemeProvider } from './context/ThemeContext';
 import { useAuth } from './hooks/useAuth';
 import { useRouters } from './hooks/useRouters';
 import { useGroups } from './hooks/useGroups';
@@ -53,65 +54,67 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      <Sidebar user={user} activeTab={activeTab} onTabChange={tab => { setActiveTab(tab as Tab); setManagingRouter(null); }} onLogout={logout} />
+    <ThemeProvider>
+      <div className="min-h-screen bg-slate-50 flex">
+        <Sidebar user={user} activeTab={activeTab} onTabChange={tab => { setActiveTab(tab as Tab); setManagingRouter(null); }} onLogout={logout} />
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden">
-        <Header
-          activeTab={activeTab}
-          managingRouter={managingRouter}
-          routers={routers}
-          groups={groups}
-          onTabChange={tab => { setActiveTab(tab); setManagingRouter(null); }}
-          onManageRouter={setManagingRouter}
-        />
+        <main className="flex-1 flex flex-col h-screen overflow-hidden">
+          <Header
+            activeTab={activeTab}
+            managingRouter={managingRouter}
+            routers={routers}
+            groups={groups}
+            onTabChange={tab => { setActiveTab(tab); setManagingRouter(null); }}
+            onManageRouter={setManagingRouter}
+          />
 
-        <div className="flex-1 overflow-y-auto p-8">
-          <AnimatePresence mode="wait">
-            {activeTab === 'dashboard' && (
-              <Dashboard
-                routers={routers}
-                groups={groups}
-                logs={logs}
-                onAddNode={() => setActiveTab('routers')}
-                onScan={() => { setActiveTab('logs'); toast.success('Audit scan initiated across all nodes.'); }}
-                onSync={() => {
-                  routers.forEach(r => routersApi.check(r.id).catch(() => {}));
-                  toast.success('Fleet synchronization started.');
-                }}
-                onExport={() => {
-                  const csv = 'id,name,url,status\n' + routers.map(r => `${r.id},${r.name},${r.url},${r.status}`).join('\n');
-                  const blob = new Blob([csv], { type: 'text/csv' });
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement('a');
-                  a.href = url; a.download = 'fleet_export.csv'; a.click();
-                }}
-              />
-            )}
-            {activeTab === 'routers' && !managingRouter && (
-              <Fleet
-                routers={routers}
-                groups={groups}
-                onRefresh={fetchRouters}
-                onRefreshGroups={fetchGroups}
-                token={token!}
-                onManage={setManagingRouter}
-                currentUser={user!}
-              />
-            )}
-            {activeTab === 'routers' && managingRouter && (
-              <RouterManagement router={managingRouter} token={token!} onBack={() => setManagingRouter(null)} />
-            )}
-            {activeTab === 'config' && <ConfigTerminal routers={routers} token={token!} />}
-            {activeTab === 'browser' && <ConfigBrowser routers={routers} token={token!} />}
-            {activeTab === 'logs' && <Logs token={token!} />}
-            {activeTab === 'users' && <Users token={token!} currentUser={user!} groups={groups} onRefreshRouters={fetchRouters} onRefreshGroups={fetchGroups} />}
-            {activeTab === 'settings' && <Settings token={token!} />}
-          </AnimatePresence>
-        </div>
-      </main>
+          <div className="flex-1 overflow-y-auto p-8">
+            <AnimatePresence mode="wait">
+              {activeTab === 'dashboard' && (
+                <Dashboard
+                  routers={routers}
+                  groups={groups}
+                  logs={logs}
+                  onAddNode={() => setActiveTab('routers')}
+                  onScan={() => { setActiveTab('logs'); toast.success('Audit scan initiated across all nodes.'); }}
+                  onSync={() => {
+                    routers.forEach(r => routersApi.check(r.id).catch(() => {}));
+                    toast.success('Fleet synchronization started.');
+                  }}
+                  onExport={() => {
+                    const csv = 'id,name,url,status\n' + routers.map(r => `${r.id},${r.name},${r.url},${r.status}`).join('\n');
+                    const blob = new Blob([csv], { type: 'text/csv' });
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = 'fleet_export.csv'; a.click();
+                  }}
+                />
+              )}
+              {activeTab === 'routers' && !managingRouter && (
+                <Fleet
+                  routers={routers}
+                  groups={groups}
+                  onRefresh={fetchRouters}
+                  onRefreshGroups={fetchGroups}
+                  token={token!}
+                  onManage={setManagingRouter}
+                  currentUser={user!}
+                />
+              )}
+              {activeTab === 'routers' && managingRouter && (
+                <RouterManagement router={managingRouter} token={token!} onBack={() => setManagingRouter(null)} />
+              )}
+              {activeTab === 'config' && <ConfigTerminal routers={routers} token={token!} />}
+              {activeTab === 'browser' && <ConfigBrowser routers={routers} token={token!} />}
+              {activeTab === 'logs' && <Logs token={token!} />}
+              {activeTab === 'users' && <Users token={token!} currentUser={user!} groups={groups} onRefreshRouters={fetchRouters} onRefreshGroups={fetchGroups} />}
+              {activeTab === 'settings' && <Settings token={token!} />}
+            </AnimatePresence>
+          </div>
+        </main>
 
-      <ToastContainer toasts={toasts} onDismiss={dismiss} />
-    </div>
+        <ToastContainer toasts={toasts} onDismiss={dismiss} />
+      </div>
+    </ThemeProvider>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Bell, ChevronRight, Command } from 'lucide-react';
+import { Search, Bell, ChevronRight, Command, Sun, Moon } from 'lucide-react';
 import { CommandPalette } from './CommandPalette';
+import { useTheme } from '../../context/ThemeContext';
 import type { Router, RouterGroup, Tab } from '../../types';
 
 const cn = (...classes: (string | false | null | undefined)[]) => classes.filter(Boolean).join(' ');
@@ -28,6 +29,7 @@ export function Header({ activeTab, managingRouter, routers, groups, onTabChange
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const { theme, toggle } = useTheme();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -105,6 +107,14 @@ export function Header({ activeTab, managingRouter, routers, groups, onTabChange
               </div>
             )}
           </div>
+
+          <button
+            onClick={toggle}
+            className="p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-700 transition-colors"
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
 
           <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
