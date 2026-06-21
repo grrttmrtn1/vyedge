@@ -28,6 +28,7 @@ import { RouterMetricsTab } from './RouterMetricsTab';
 import { NatTab } from './NatTab';
 import { ServicesTab } from './ServicesTab';
 import { ContainersTab } from './ContainersTab';
+import { FirewallTab } from './FirewallTab';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -50,7 +51,7 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
   const tabs = useMemo(() => [
     { id: 'interfaces', label: 'Interfaces', icon: <Network size={16} />, path: ['interfaces'] },
     { id: 'routing', label: 'Routing', icon: <Globe size={16} />, path: ['protocols'] },
-    { id: 'firewall', label: 'Firewall', icon: <ShieldCheck size={16} />, path: ['firewall'] },
+    { id: 'firewall', label: 'Firewall', icon: <ShieldCheck size={16} />, path: null },
     { id: 'vpn', label: 'VPN', icon: <Lock size={16} />, path: ['vpn'] },
     { id: 'nat', label: 'NAT', icon: <ArrowLeftRight size={16} />, path: null },
     { id: 'containers', label: 'Containers', icon: <Package size={16} />, path: null },
@@ -179,6 +180,8 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
           <ServicesTab routerId={router.id} token={token} />
         ) : activeTab === 'containers' ? (
           <ContainersTab routerId={router.id} token={token} />
+        ) : activeTab === 'firewall' ? (
+          <FirewallTab routerId={router.id} token={token} />
         ) : (
           <Card className="p-0 overflow-hidden bg-zinc-900 border-zinc-800 shadow-2xl">
             <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
