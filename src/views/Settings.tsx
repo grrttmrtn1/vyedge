@@ -95,9 +95,9 @@ export function Settings({ token }: SettingsProps) {
                   <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="pl-14 space-y-4 pt-2">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">SSO Type</label>
+                        <label className="text-[10px] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest">SSO Type</label>
                         <select
-                          className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm"
+                          className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                           value={settings.sso_type as string}
                           onChange={e => updateSetting('sso_type', e.target.value)}
                         >
@@ -112,31 +112,31 @@ export function Settings({ token }: SettingsProps) {
                   </motion.div>
                 )}
               </div>
-              <div className="h-px bg-zinc-100" />
+              <div className="h-px bg-zinc-100 dark:bg-slate-700" />
               <div className="space-y-4">
-                <label className="text-xs font-bold text-zinc-900 uppercase tracking-widest">Centralized Syslog Endpoint</label>
+                <label className="text-xs font-bold text-zinc-900 dark:text-slate-100 uppercase tracking-widest">Centralized Syslog Endpoint</label>
                 <div className="flex gap-3">
                   <input
-                    className="flex-1 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all font-mono"
+                    className="flex-1 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all font-mono dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:focus:bg-slate-600 dark:placeholder:text-slate-500"
                     placeholder="syslog.internal.vyedge.com"
                     value={settings.syslog_host as string}
                     onChange={e => updateSetting('syslog_host', e.target.value)}
                   />
                   <input
-                    className="w-24 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all font-mono"
+                    className="w-24 px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all font-mono dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:focus:bg-slate-600"
                     placeholder="514"
                     value={settings.syslog_port as string}
                     onChange={e => updateSetting('syslog_port', e.target.value)}
                   />
                   <Button variant="outline">Test Connection</Button>
                 </div>
-                <p className="text-[10px] text-zinc-400 font-medium italic">All edge node audit logs will be forwarded to this endpoint in real-time.</p>
+                <p className="text-[10px] text-zinc-400 dark:text-slate-500 font-medium italic">All edge node audit logs will be forwarded to this endpoint in real-time.</p>
               </div>
-              <div className="h-px bg-zinc-100" />
+              <div className="h-px bg-zinc-100 dark:bg-slate-700" />
               <div className="space-y-4">
-                <label className="text-xs font-bold text-zinc-900 uppercase tracking-widest">Audit Retention Policy</label>
+                <label className="text-xs font-bold text-zinc-900 dark:text-slate-100 uppercase tracking-widest">Audit Retention Policy</label>
                 <select
-                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all font-medium"
+                  className="w-full px-4 py-2.5 bg-zinc-50 border border-zinc-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-zinc-900/5 focus:border-zinc-900 transition-all font-medium dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:focus:bg-slate-600"
                   value={settings.audit_retention as string}
                   onChange={e => updateSetting('audit_retention', e.target.value)}
                 >
@@ -151,33 +151,33 @@ export function Settings({ token }: SettingsProps) {
 
           <Card title="Security & Compliance" subtitle="Access control and data protection">
             <div className="space-y-6">
-              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 dark:bg-slate-700/50 dark:border-slate-700">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400">
                     <ShieldCheck size={20} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-zinc-900">Encryption at Rest</p>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">AES-256-GCM • {settings.encryption_at_rest ? 'Active' : 'Disabled'}</p>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-slate-100">Encryption at Rest</p>
+                    <p className="text-[10px] text-zinc-400 dark:text-slate-500 font-bold uppercase tracking-widest">AES-256-GCM • {settings.encryption_at_rest ? 'Active' : 'Disabled'}</p>
                   </div>
                 </div>
                 <Button variant={settings.encryption_at_rest ? 'secondary' : 'primary'} size="sm" onClick={() => updateSetting('encryption_at_rest', !settings.encryption_at_rest)}>
                   {settings.encryption_at_rest ? 'Disable' : 'Enable'}
                 </Button>
               </div>
-              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 dark:bg-slate-700/50 dark:border-slate-700">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400">
                     <Lock size={20} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-zinc-900">Session Management</p>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{settings.session_timeout}m Timeout • Multi-device</p>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-slate-100">Session Management</p>
+                    <p className="text-[10px] text-zinc-400 dark:text-slate-500 font-bold uppercase tracking-widest">{settings.session_timeout}m Timeout • Multi-device</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <select
-                    className="px-2 py-1 bg-white border border-zinc-200 rounded-lg text-xs"
+                    className="px-2 py-1 bg-white border border-zinc-200 rounded-lg text-xs dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                     value={settings.session_timeout as string}
                     onChange={e => updateSetting('session_timeout', e.target.value)}
                   >
@@ -188,18 +188,18 @@ export function Settings({ token }: SettingsProps) {
                   </select>
                 </div>
               </div>
-              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
+              <div className="flex items-center justify-between p-4 bg-zinc-50 rounded-2xl border border-zinc-100 dark:bg-slate-700/50 dark:border-slate-700">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-zinc-200 flex items-center justify-center text-zinc-400 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-400">
                     <Shield size={20} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-zinc-900">Compliance Mode</p>
-                    <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">Current: {settings.compliance_mode}</p>
+                    <p className="text-sm font-bold text-zinc-900 dark:text-slate-100">Compliance Mode</p>
+                    <p className="text-[10px] text-zinc-400 dark:text-slate-500 font-bold uppercase tracking-widest">Current: {settings.compliance_mode}</p>
                   </div>
                 </div>
                 <select
-                  className="px-2 py-1 bg-white border border-zinc-200 rounded-lg text-xs"
+                  className="px-2 py-1 bg-white border border-zinc-200 rounded-lg text-xs dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
                   value={settings.compliance_mode as string}
                   onChange={e => updateSetting('compliance_mode', e.target.value)}
                 >
@@ -217,26 +217,26 @@ export function Settings({ token }: SettingsProps) {
           <Card title="System Health" subtitle="Manager instance status">
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">API Status</span>
+                <span className="text-[10px] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest">API Status</span>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span className="text-xs font-bold text-emerald-600">Operational</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Database</span>
+                <span className="text-[10px] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest">Database</span>
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-bold text-zinc-900">Healthy</span>
+                  <span className="text-xs font-bold text-zinc-900 dark:text-slate-100">Healthy</span>
                 </div>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Memory</span>
-                <div className="flex items-center gap-2 text-xs font-bold text-zinc-900">
+                <span className="text-[10px] font-bold text-zinc-400 dark:text-slate-500 uppercase tracking-widest">Memory</span>
+                <div className="flex items-center gap-2 text-xs font-bold text-zinc-900 dark:text-slate-100">
                   {sysInfo ? `${Math.round(sysInfo.memory.rss / 1024 / 1024)}MB / 512MB` : 'Loading...'}
                 </div>
               </div>
-              <div className="pt-4 border-t border-zinc-100">
+              <div className="pt-4 border-t border-zinc-100 dark:border-slate-700">
                 <Button variant="secondary" className="w-full" onClick={() => handleSystemAction('restart')} disabled={loading === 'restart'}>
                   <RefreshCcw size={14} className={cn(loading === 'restart' && "animate-spin")} /> {loading === 'restart' ? 'Restarting...' : 'Restart Services'}
                 </Button>
@@ -271,14 +271,14 @@ function ToggleItem({ title, description, enabled, onToggle, children }: { title
     <div className="flex flex-col">
       <div className="flex items-start justify-between">
         <div className="flex-1 pr-8">
-          <h5 className="text-sm font-bold text-zinc-900">{title}</h5>
-          <p className="text-xs text-zinc-500 mt-1">{description}</p>
+          <h5 className="text-sm font-bold text-zinc-900 dark:text-slate-100">{title}</h5>
+          <p className="text-xs text-zinc-500 dark:text-slate-400 mt-1">{description}</p>
         </div>
         <div
           onClick={onToggle}
           className={cn(
             "w-10 h-5 rounded-full relative transition-colors cursor-pointer",
-            enabled ? "bg-zinc-900" : "bg-zinc-200"
+            enabled ? "bg-zinc-900 dark:bg-indigo-600" : "bg-zinc-200 dark:bg-slate-600"
           )}
         >
           <div className={cn(

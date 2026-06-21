@@ -131,7 +131,7 @@ export function Dashboard({ routers, groups, logs, onAddNode, onScan, onSync, on
               <div className="space-y-6">
                 {routersByGroup.map(({ label, routers: groupRouters }) => (
                   <div key={label}>
-                    <p className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-3">{label}</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">{label}</p>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {groupRouters.map(router => (
                         <div
@@ -151,9 +151,9 @@ export function Dashboard({ routers, groups, logs, onAddNode, onScan, onSync, on
                               router.status === 'online' ? "bg-emerald-500" :
                               router.status === 'offline' ? "bg-rose-500" : "bg-amber-500"
                             )} />
-                            <p className="text-xs font-semibold text-slate-900 truncate">{router.name}</p>
+                            <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{router.name}</p>
                           </div>
-                          <p className="text-[10px] text-slate-500 font-mono truncate">{router.url}</p>
+                          <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono truncate">{router.url}</p>
                         </div>
                       ))}
                     </div>
@@ -170,39 +170,39 @@ export function Dashboard({ routers, groups, logs, onAddNode, onScan, onSync, on
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={onAddNode}
-                className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:border-indigo-100 border border-transparent transition-all group"
+                className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:border-indigo-100 border border-transparent transition-all group dark:bg-slate-700/50 dark:hover:bg-indigo-900/30"
               >
-                <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-                  <Plus size={16} className="text-slate-500 group-hover:text-indigo-600" />
+                <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:bg-indigo-100 transition-colors dark:bg-slate-700 dark:group-hover:bg-indigo-800/40">
+                  <Plus size={16} className="text-slate-500 group-hover:text-indigo-600 dark:text-slate-400" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-indigo-600">Add Node</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-indigo-600 dark:text-slate-400">Add Node</span>
               </button>
               <button
                 onClick={onScan}
-                className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:border-emerald-100 border border-transparent transition-all group"
+                className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-slate-50 hover:bg-emerald-50 hover:border-emerald-100 border border-transparent transition-all group dark:bg-slate-700/50 dark:hover:bg-emerald-900/30"
               >
-                <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
-                  <ShieldCheck size={16} className="text-slate-500 group-hover:text-emerald-600" />
+                <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:bg-emerald-100 transition-colors dark:bg-slate-700 dark:group-hover:bg-emerald-800/40">
+                  <ShieldCheck size={16} className="text-slate-500 group-hover:text-emerald-600 dark:text-slate-400" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-emerald-600">Audit Scan</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-emerald-600 dark:text-slate-400">Audit Scan</span>
               </button>
               <button
                 onClick={onSync}
-                className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:border-indigo-100 border border-transparent transition-all group"
+                className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-slate-50 hover:bg-indigo-50 hover:border-indigo-100 border border-transparent transition-all group dark:bg-slate-700/50 dark:hover:bg-indigo-900/30"
               >
-                <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
-                  <RefreshCcw size={16} className="text-slate-500 group-hover:text-indigo-600" />
+                <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:bg-indigo-100 transition-colors dark:bg-slate-700 dark:group-hover:bg-indigo-800/40">
+                  <RefreshCcw size={16} className="text-slate-500 group-hover:text-indigo-600 dark:text-slate-400" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-indigo-600">Sync Fleet</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 group-hover:text-indigo-600 dark:text-slate-400">Sync Fleet</span>
               </button>
               <button
                 onClick={onExport}
-                className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 border border-transparent transition-all group"
+                className="flex flex-col items-center gap-2.5 p-4 rounded-xl bg-slate-50 hover:bg-slate-100 border border-transparent transition-all group dark:bg-slate-700/50 dark:hover:bg-slate-600/50"
               >
-                <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:bg-slate-200 transition-colors">
-                  <Download size={16} className="text-slate-500" />
+                <div className="w-9 h-9 rounded-lg bg-white shadow-sm flex items-center justify-center group-hover:bg-slate-200 transition-colors dark:bg-slate-700 dark:group-hover:bg-slate-600">
+                  <Download size={16} className="text-slate-500 dark:text-slate-400" />
                 </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Export Data</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Export Data</span>
               </button>
             </div>
           </Card>
@@ -214,17 +214,17 @@ export function Dashboard({ routers, groups, logs, onAddNode, onScan, onSync, on
                 <div
                   key={log.id}
                   className={cn(
-                    "flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 transition-colors border-l-2 ml-1",
+                    "flex items-start gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors border-l-2 ml-1",
                     actionBorderColor(log.action)
                   )}
                 >
                   <div className={cn("w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0", actionDotColor(log.action))} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-semibold text-slate-900 truncate">
-                      {log.username} <span className="font-normal text-slate-500">·</span>{' '}
-                      <code className="bg-slate-100 px-1 py-0.5 rounded text-[10px] font-mono text-slate-700">{log.action}</code>
+                    <p className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">
+                      {log.username} <span className="font-normal text-slate-500 dark:text-slate-400">·</span>{' '}
+                      <code className="bg-slate-100 dark:bg-slate-700 px-1 py-0.5 rounded text-[10px] font-mono text-slate-700 dark:text-slate-300">{log.action}</code>
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                       {log.router_name || 'System'} · {new Date(log.timestamp).toLocaleTimeString()}
                     </p>
                   </div>
@@ -263,12 +263,12 @@ function StatCard({
   return (
     <Card className="relative overflow-hidden">
       <div className="flex items-start justify-between mb-3">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{label}</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
         <div className={cn("w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0", iconBg)}>
           {icon}
         </div>
       </div>
-      <h3 className={cn('text-3xl font-bold tracking-tight mb-3 transition-colors duration-300', pulse ? 'text-emerald-500' : 'text-slate-900')}>{value}</h3>
+      <h3 className={cn('text-3xl font-bold tracking-tight mb-3 transition-colors duration-300', pulse ? 'text-emerald-500' : 'text-slate-900 dark:text-slate-50')}>{value}</h3>
       {sparkData && sparkColor && (
         <div className="h-10 -mx-1">
           <ResponsiveContainer width="100%" height="100%">

@@ -25,7 +25,7 @@ const Select = ({
 }) => (
   <div className="space-y-1">
     {label && (
-      <label className="text-xs font-medium text-slate-600">{label}</label>
+      <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{label}</label>
     )}
     <div className="relative">
       <select
@@ -33,7 +33,7 @@ const Select = ({
         onChange={onChange}
         disabled={disabled}
         className={cn(
-          'w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed',
+          'w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 appearance-none pr-8 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100',
           error && 'border-rose-500 focus:ring-rose-500/20 focus:border-rose-500'
         )}
       >

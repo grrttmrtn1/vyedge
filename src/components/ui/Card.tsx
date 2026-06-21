@@ -18,11 +18,11 @@ interface CardProps {
 }
 
 const Card = ({ children, className, title, subtitle }: CardProps) => (
-  <div className={cn("bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200", className)}>
+  <div className={cn("bg-white border border-slate-200/60 rounded-2xl overflow-hidden shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 dark:bg-slate-800 dark:border-slate-700", className)}>
     {title && (
-      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30 flex flex-col gap-0.5">
-        <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
-        {subtitle && <p className="text-xs text-slate-400 font-medium">{subtitle}</p>}
+      <div className="px-6 py-4 border-b border-slate-100 bg-slate-50/30 flex flex-col gap-0.5 dark:border-slate-700 dark:bg-slate-800/50">
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">{title}</h3>
+        {subtitle && <p className="text-xs text-slate-400 font-medium dark:text-slate-500">{subtitle}</p>}
       </div>
     )}
     <div className="p-6">{children}</div>

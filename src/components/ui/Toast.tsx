@@ -10,9 +10,9 @@ const icons = {
 };
 
 const styles = {
-  success: 'bg-white border-emerald-200 text-emerald-800',
-  error: 'bg-white border-rose-200 text-rose-800',
-  warning: 'bg-white border-amber-200 text-amber-800',
+  success: 'bg-white border-emerald-200 text-emerald-800 dark:bg-slate-800 dark:border-emerald-700 dark:text-emerald-300',
+  error: 'bg-white border-rose-200 text-rose-800 dark:bg-slate-800 dark:border-rose-700 dark:text-rose-300',
+  warning: 'bg-white border-amber-200 text-amber-800 dark:bg-slate-800 dark:border-amber-700 dark:text-amber-300',
 };
 
 interface ToastContainerProps {

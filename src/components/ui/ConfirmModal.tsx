@@ -40,7 +40,7 @@ export function ConfirmModal({
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             onClick={e => e.stopPropagation()}
-            className="bg-white rounded-2xl border border-zinc-200 shadow-2xl shadow-zinc-900/20 p-6 w-full max-w-sm mx-4"
+            className="bg-white rounded-2xl border border-zinc-200 shadow-2xl shadow-zinc-900/20 p-6 w-full max-w-sm mx-4 dark:bg-slate-800 dark:border-slate-700"
           >
             <div className="flex items-start gap-4">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${variant === 'danger' ? 'bg-rose-50' : 'bg-amber-50'}`}>
@@ -50,8 +50,8 @@ export function ConfirmModal({
                 }
               </div>
               <div className="flex-1 min-w-0">
-                <h3 className="text-sm font-bold text-zinc-900">{title}</h3>
-                <p className="text-xs text-zinc-500 mt-1 leading-relaxed">{description}</p>
+                <h3 className="text-sm font-bold text-zinc-900 dark:text-slate-50">{title}</h3>
+                <p className="text-xs text-zinc-500 mt-1 leading-relaxed dark:text-slate-400">{description}</p>
               </div>
             </div>
             <div className="flex gap-3 mt-6">

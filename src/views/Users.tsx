@@ -167,8 +167,8 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-zinc-900">User Administration</h3>
-          <p className="text-sm text-zinc-500">Manage administrative access and roles.</p>
+          <h3 className="text-lg font-bold text-zinc-900 dark:text-slate-50">User Administration</h3>
+          <p className="text-sm text-zinc-500 dark:text-slate-400">Manage administrative access and roles.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setShowGroups(!showGroups)}>
@@ -179,7 +179,7 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
       </div>
 
       {showAdd && (
-        <Card className="p-6 bg-zinc-50">
+        <Card className="p-6 bg-zinc-50 dark:bg-slate-800/50">
           <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
             <div className="space-y-1">
               <Input label="Username" value={form.username} onChange={e => setForm({...form, username: e.target.value})} placeholder="j.doe" />
@@ -189,11 +189,11 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
               <p className="text-[9px] text-zinc-400 leading-tight">Min 8 chars, 1 upper, 1 lower, 1 number, 1 special</p>
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-medium text-zinc-600">Role</label>
+              <label className="text-xs font-medium text-zinc-600 dark:text-slate-400">Role</label>
               <select
                 value={form.role}
                 onChange={e => setForm({...form, role: e.target.value as 'admin' | 'operator' | 'read-only'})}
-                className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm h-[38px] focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all"
+                className="w-full px-3 py-2 bg-white border border-zinc-200 rounded-lg text-sm h-[38px] focus:ring-2 focus:ring-zinc-900/10 focus:border-zinc-900 outline-none transition-all dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100"
               >
                 <option value="operator">Operator</option>
                 <option value="admin">Administrator</option>
@@ -210,8 +210,8 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
       )}
 
       {resettingPassword && (
-        <Card className="p-6 bg-zinc-50 border-zinc-900/20">
-          <h4 className="text-sm font-bold mb-4">Reset Password for: {resettingPassword.username}</h4>
+        <Card className="p-6 bg-zinc-50 border-zinc-900/20 dark:bg-slate-800/50 dark:border-slate-700">
+          <h4 className="text-sm font-bold mb-4 dark:text-slate-100">Reset Password for: {resettingPassword.username}</h4>
           <form onSubmit={handleResetPassword} className="flex gap-4 items-start">
             <div className="flex-1 space-y-1">
               <Input label="New Password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
@@ -227,12 +227,12 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
       )}
 
       {assigningGroups && (
-        <Card className="p-6 bg-zinc-50 border-zinc-900/20">
-          <h4 className="text-sm font-bold mb-4">Assign Groups to: {assigningGroups.username}</h4>
+        <Card className="p-6 bg-zinc-50 border-zinc-900/20 dark:bg-slate-800/50 dark:border-slate-700">
+          <h4 className="text-sm font-bold mb-4 dark:text-slate-100">Assign Groups to: {assigningGroups.username}</h4>
           <form onSubmit={handleAssignGroups} className="space-y-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {groups.map(g => (
-                <label key={g.id} className="flex items-center gap-2 p-3 bg-white border border-zinc-200 rounded-xl cursor-pointer hover:bg-zinc-50 transition-colors">
+                <label key={g.id} className="flex items-center gap-2 p-3 bg-white border border-zinc-200 rounded-xl cursor-pointer hover:bg-zinc-50 transition-colors dark:bg-slate-700 dark:border-slate-600 dark:hover:bg-slate-600">
                   <input
                     type="checkbox"
                     checked={userGroups.includes(g.id)}
@@ -242,7 +242,7 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
                     }}
                     className="w-4 h-4 rounded text-zinc-900 focus:ring-zinc-900"
                   />
-                  <span className="text-xs font-medium text-zinc-900">{g.name}</span>
+                  <span className="text-xs font-medium text-zinc-900 dark:text-slate-100">{g.name}</span>
                 </label>
               ))}
             </div>
@@ -258,7 +258,7 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <Card title="Router Groups">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Active Groups</h3>
+              <h3 className="text-xs font-bold text-zinc-500 dark:text-slate-400 uppercase tracking-wider">Active Groups</h3>
               <Button variant="ghost" size="sm" onClick={onRefreshGroups} className="text-zinc-400 hover:text-zinc-900">
                 <RefreshCw size={12} className="mr-1" /> Sync
               </Button>
@@ -269,24 +269,24 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
             </form>
             <div className="space-y-2">
               {groups.map(g => (
-                <div key={g.id} className="flex items-center justify-between p-3 border border-zinc-100 rounded-xl bg-white group">
+                <div key={g.id} className="flex items-center justify-between p-3 border border-zinc-100 rounded-xl bg-white group dark:bg-slate-700 dark:border-slate-700">
                   <div className="flex flex-col">
-                    <span className="text-sm font-bold text-zinc-900">{g.name}</span>
-                    <span className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest">ID: {g.id}</span>
+                    <span className="text-sm font-bold text-zinc-900 dark:text-slate-100">{g.name}</span>
+                    <span className="text-[10px] font-mono text-zinc-400 dark:text-slate-500 uppercase tracking-widest">ID: {g.id}</span>
                   </div>
                   <button onClick={() => setPendingDeleteGroupAdmin(g.id)} className="p-2 text-zinc-300 hover:text-red-500 transition-colors">
                     <Trash2 size={14} />
                   </button>
                 </div>
               ))}
-              {groups.length === 0 && <p className="text-center py-4 text-zinc-400 text-xs">No groups defined</p>}
+              {groups.length === 0 && <p className="text-center py-4 text-zinc-400 dark:text-slate-500 text-xs">No groups defined</p>}
             </div>
           </Card>
           <Card title="Access Control Policy">
             <div className="space-y-4">
-              <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100">
-                <p className="text-xs font-bold text-zinc-900 mb-1">Role-Based Access</p>
-                <p className="text-[10px] text-zinc-500 leading-relaxed">
+              <div className="p-4 bg-zinc-50 rounded-2xl border border-zinc-100 dark:bg-slate-700/50 dark:border-slate-700">
+                <p className="text-xs font-bold text-zinc-900 dark:text-slate-100 mb-1">Role-Based Access</p>
+                <p className="text-[10px] text-zinc-500 dark:text-slate-400 leading-relaxed">
                   Operators and Read-Only users are restricted to the router groups assigned to them.
                   Administrators have global access to all infrastructure within the tenant.
                 </p>
@@ -304,31 +304,31 @@ export function Users({ token, currentUser, groups, onRefreshRouters, onRefreshG
         <Card className="p-0">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-zinc-50 border-b border-zinc-100">
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Username</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Role</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Groups</th>
-                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500">Actions</th>
+              <tr className="bg-zinc-50 border-b border-zinc-100 dark:bg-slate-800/50 dark:border-slate-700">
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-slate-400">Username</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-slate-400">Role</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-slate-400">Groups</th>
+                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-slate-400">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-zinc-100">
+            <tbody className="divide-y divide-zinc-100 dark:divide-slate-700">
               {users.map(u => (
                 <tr key={u.id}>
-                  <td className="px-6 py-4 text-sm font-medium">{u.username}</td>
+                  <td className="px-6 py-4 text-sm font-medium dark:text-slate-100">{u.username}</td>
                   <td className="px-6 py-4">
                     <span className={cn(
                       "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider",
-                      u.role === 'admin' ? "bg-zinc-900 text-white" :
-                      u.role === 'read-only' ? "bg-blue-100 text-blue-700" : "bg-zinc-100 text-zinc-600"
+                      u.role === 'admin' ? "bg-zinc-900 text-white dark:bg-slate-600 dark:text-white" :
+                      u.role === 'read-only' ? "bg-blue-100 text-blue-700" : "bg-zinc-100 text-zinc-600 dark:bg-slate-700 dark:text-slate-300"
                     )}>{u.role}</span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
                       {u.role === 'admin' ? (
-                        <span className="text-[10px] text-zinc-400 italic">Global Access</span>
+                        <span className="text-[10px] text-zinc-400 dark:text-slate-500 italic">Global Access</span>
                       ) : u.groups && u.groups.length > 0 ? (
                         u.groups.map(g => (
-                          <span key={g} className="px-2 py-0.5 bg-zinc-50 border border-zinc-100 rounded text-[9px] font-medium text-zinc-600">{g}</span>
+                          <span key={g} className="px-2 py-0.5 bg-zinc-50 border border-zinc-100 rounded text-[9px] font-medium text-zinc-600 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300">{g}</span>
                         ))
                       ) : (
                         <span className="text-[10px] text-emerald-500 font-bold italic">Global Access (Default)</span>

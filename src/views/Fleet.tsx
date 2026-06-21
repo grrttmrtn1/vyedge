@@ -29,8 +29,8 @@ function cn(...inputs: ClassValue[]) {
 function DetailItem({ label, value }: { label: string; value: any }) {
   return (
     <div>
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
-      <p className="text-sm font-medium text-slate-900">{value}</p>
+      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</p>
+      <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{value}</p>
     </div>
   );
 }
@@ -40,20 +40,20 @@ function RouterCardMetrics({ routerId, token }: { routerId: string; token: strin
 
   return (
     <div className="mt-6 grid grid-cols-2 gap-4">
-      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">CPU Load</p>
+      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-slate-700 dark:border-slate-700">
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">CPU Load</p>
         {latest?.cpu != null ? (
-          <p className="text-sm font-bold text-slate-900">{latest.cpu.loadPercent}%</p>
+          <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{latest.cpu.loadPercent}%</p>
         ) : (
-          <div className="h-4 bg-slate-200 rounded animate-pulse w-12" />
+          <div className="h-4 bg-slate-200 dark:bg-slate-600 rounded animate-pulse w-12" />
         )}
       </div>
-      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Uptime</p>
+      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 dark:bg-slate-700 dark:border-slate-700">
+        <p className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Uptime</p>
         {latest?.uptime?.str ? (
-          <p className="text-sm font-bold text-slate-900">{latest.uptime.str}</p>
+          <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{latest.uptime.str}</p>
         ) : (
-          <div className="h-4 bg-slate-200 rounded animate-pulse w-16" />
+          <div className="h-4 bg-slate-200 dark:bg-slate-600 rounded animate-pulse w-16" />
         )}
       </div>
     </div>
@@ -261,8 +261,8 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
     >
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-slate-900">Router Fleet</h3>
-          <p className="text-sm text-slate-500">Manage your VyOS instances across all tenants.</p>
+          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">Router Fleet</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Manage your VyOS instances across all tenants.</p>
         </div>
         <div className="flex gap-2">
           <Button variant="secondary" onClick={() => setShowManageGroups(!showManageGroups)}>
@@ -289,7 +289,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
               "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
               activeGroupFilter === 'all'
                 ? "bg-indigo-600 text-white shadow-sm"
-                : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
+                : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500"
             )}
           >
             All ({routers.length})
@@ -302,7 +302,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                 "px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all",
                 activeGroupFilter === g.id
                   ? "bg-indigo-600 text-white shadow-sm"
-                  : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600"
+                  : "bg-white border border-slate-200 text-slate-600 hover:border-indigo-300 hover:text-indigo-600 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300 dark:hover:border-indigo-500"
               )}
             >
               {g.name} ({routers.filter(r => r.group_id === g.id).length})
@@ -312,7 +312,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
       )}
 
       {showAdd && (
-        <Card className="p-6 border-slate-900/10 bg-slate-50/50">
+        <Card className="p-6 border-slate-900/10 bg-slate-50/50 dark:bg-slate-800/50">
           <form onSubmit={handleAdd} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Name" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Edge-01" />
@@ -336,8 +336,8 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
       )}
 
       {showEdit && (
-        <Card className="p-6 border-slate-900/10 bg-slate-50/50">
-          <h4 className="text-sm font-bold mb-4">Edit Router: {showEdit.name}</h4>
+        <Card className="p-6 border-slate-900/10 bg-slate-50/50 dark:bg-slate-800/50">
+          <h4 className="text-sm font-bold mb-4 dark:text-slate-100">Edit Router: {showEdit.name}</h4>
           <form onSubmit={handleEdit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input label="Name" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} placeholder="Edge-01" />
@@ -364,7 +364,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
         <Card title="Infrastructure Groups" subtitle="Logical isolation for edge nodes">
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h3 className="text-sm font-bold text-slate-900">Manage Groups</h3>
+              <h3 className="text-sm font-bold text-slate-900 dark:text-slate-50">Manage Groups</h3>
               <Button variant="outline" size="sm" onClick={onRefreshGroups}>
                 <RefreshCw size={12} className="mr-1" /> Refresh
               </Button>
@@ -374,16 +374,16 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                 value={groupForm.name}
                 onChange={e => setGroupForm({ name: e.target.value })}
                 placeholder="New Group Name (e.g. US-EAST-1)"
-                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all"
+                className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:bg-white focus:ring-4 focus:ring-slate-900/5 focus:border-slate-900 transition-all dark:bg-slate-700 dark:border-slate-600 dark:text-slate-100 dark:focus:bg-slate-600 dark:placeholder:text-slate-400"
               />
               <Button type="submit">Create Group</Button>
             </form>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {groups.map(g => (
-                <div key={g.id} className="flex items-center justify-between p-5 border border-slate-100 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all group">
+                <div key={g.id} className="flex items-center justify-between p-5 border border-slate-100 rounded-2xl bg-white shadow-sm hover:shadow-md transition-all group dark:bg-slate-800 dark:border-slate-700">
                   <div>
-                    <p className="text-sm font-bold text-slate-900">{g.name}</p>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">ID: {g.id} • {g.node_count || 0} Nodes</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-slate-50">{g.name}</p>
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold uppercase tracking-widest mt-1">ID: {g.id} • {g.node_count || 0} Nodes</p>
                   </div>
                   {currentUser.role === 'admin' && (
                     <button onClick={() => setPendingDeleteGroup(g.id)} className="p-2 text-slate-300 hover:text-rose-500 transition-colors">
@@ -427,8 +427,8 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
               </div>
 
               <div className="space-y-1">
-                <h4 className="text-lg font-bold text-slate-900 tracking-tight">{router.name}</h4>
-                <p className="text-[10px] text-slate-400 font-mono tracking-wider">{router.url}</p>
+                <h4 className="text-lg font-bold text-slate-900 dark:text-slate-50 tracking-tight">{router.name}</h4>
+                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-mono tracking-wider">{router.url}</p>
               </div>
 
               <RouterCardMetrics routerId={router.id} token={token} />
@@ -442,22 +442,22 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                 </Button>
               </div>
 
-              <div className="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between">
+              <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-700 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "w-2 h-2 rounded-full",
                     router.status === 'online' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" :
                     router.status === 'offline' ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.3)]" : "bg-slate-300"
                   )} />
-                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">{router.status}</span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500 dark:text-slate-400">{router.status}</span>
                   {router.vyos_version && (
-                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-slate-100 text-slate-500 border border-slate-200 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600">
                       {router.vyos_version}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">VyOS</span>
+                  <span className="text-[10px] font-bold text-slate-300 dark:text-slate-600 uppercase tracking-widest">VyOS</span>
                   <button
                     onClick={async () => {
                       await apiFetch(`/api/routers/${router.id}/detect-version`, { method: 'POST' });
@@ -474,17 +474,17 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
           ))}
           {routers.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mb-4">
+              <div className="w-16 h-16 bg-slate-50 dark:bg-slate-700 rounded-full flex items-center justify-center text-slate-300 dark:text-slate-500 mb-4">
                 <Server size={32} />
               </div>
-              <h3 className="text-lg font-bold text-slate-900">No edge nodes found</h3>
-              <p className="text-sm text-slate-500 max-w-xs mt-1">Start by adding your first VyOS instance to the management fleet.</p>
+              <h3 className="text-lg font-bold text-slate-900 dark:text-slate-50">No edge nodes found</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs mt-1">Start by adding your first VyOS instance to the management fleet.</p>
               <Button onClick={() => setShowAdd(true)} className="mt-6">Add First Router</Button>
             </div>
           )}
           {routers.length > 0 && filteredRouters.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-24 text-center">
-              <p className="text-sm text-slate-500 font-medium">No routers in this group</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">No routers in this group</p>
             </div>
           )}
         </div>
@@ -492,7 +492,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
 
       {selectedRouter && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-          <Card title={`Router Details: ${selectedRouter.name}`} className="bg-slate-50">
+          <Card title={`Router Details: ${selectedRouter.name}`} className="bg-slate-50 dark:bg-slate-800">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <DetailItem label="ID" value={selectedRouter.id} />

@@ -53,10 +53,10 @@ interface StatCardProps {
 
 function StatCard({ label, value, sub }: StatCardProps) {
   return (
-    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col gap-1">
-      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
-      <p className="text-2xl font-bold text-slate-900 tabular-nums">{value}</p>
-      {sub && <p className="text-xs text-slate-400">{sub}</p>}
+    <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 flex flex-col gap-1 dark:bg-slate-700 dark:border-slate-700">
+      <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">{label}</p>
+      <p className="text-2xl font-bold text-slate-900 dark:text-slate-50 tabular-nums">{value}</p>
+      {sub && <p className="text-xs text-slate-400 dark:text-slate-500">{sub}</p>}
     </div>
   );
 }
@@ -69,8 +69,8 @@ interface MetricsChartProps {
 
 function MetricsChart({ title, color, data }: MetricsChartProps) {
   return (
-    <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-6 space-y-3">
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{title}</p>
+    <div className="bg-white border border-slate-200/60 rounded-2xl shadow-sm p-6 space-y-3 dark:bg-slate-800 dark:border-slate-700">
+      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{title}</p>
       <div className="h-40">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
@@ -136,8 +136,8 @@ export function RouterMetricsTab({ routerId, token }: RouterMetricsTabProps) {
           <Activity size={24} className="text-indigo-400 animate-pulse" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-slate-700">Waiting for metrics…</p>
-          <p className="text-xs text-slate-400 mt-1">Data will appear once the first SSE event arrives.</p>
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Waiting for metrics…</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Data will appear once the first SSE event arrives.</p>
         </div>
       </motion.div>
     );

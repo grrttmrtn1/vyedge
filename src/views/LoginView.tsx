@@ -25,7 +25,7 @@ export function LoginView({ onLogin, loading, error }: LoginViewProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 flex">
       {/* Left panel — branding */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-slate-900 to-slate-800 flex-col p-12 relative overflow-hidden">
         <div className="flex items-center gap-3 mb-auto">
@@ -74,12 +74,12 @@ export function LoginView({ onLogin, loading, error }: LoginViewProps) {
             <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-600/30">
               <Zap size={18} className="text-white" />
             </div>
-            <span className="text-xl font-bold text-slate-900 tracking-tight">Vy Edge</span>
+            <span className="text-xl font-bold text-slate-900 dark:text-slate-50 tracking-tight">Vy Edge</span>
           </div>
 
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 mb-1">Sign in</h2>
-            <p className="text-slate-500 text-sm">Enter your credentials to access the management console</p>
+            <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-50 mb-1">Sign in</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm">Enter your credentials to access the management console</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -110,7 +110,7 @@ export function LoginView({ onLogin, loading, error }: LoginViewProps) {
             </Button>
           </form>
 
-          <p className="text-center text-xs text-slate-400 mt-8">
+          <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-8">
             VyEdge v2.5.0-enterprise · Self-hosted deployment
           </p>
         </motion.div>
