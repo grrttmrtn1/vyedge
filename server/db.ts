@@ -191,6 +191,7 @@ const migrate = () => {
       if (!routerColumns.includes('tenant_id')) db.exec("ALTER TABLE routers ADD COLUMN tenant_id TEXT DEFAULT 'default'");
       if (!routerColumns.includes('status')) db.exec("ALTER TABLE routers ADD COLUMN status TEXT DEFAULT 'unknown'");
       if (!routerColumns.includes('last_check')) db.exec('ALTER TABLE routers ADD COLUMN last_check DATETIME');
+      if (!routerColumns.includes('vyos_version')) db.exec('ALTER TABLE routers ADD COLUMN vyos_version TEXT');
     }
 
     const auditTableInfo = db.prepare('PRAGMA table_info(audit_logs)').all() as any[];

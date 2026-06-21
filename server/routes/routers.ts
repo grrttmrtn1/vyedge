@@ -24,19 +24,41 @@ const UpdateRouterSchema = z.object({
 const allowSelfSigned = process.env.ALLOW_SELF_SIGNED === 'true';
 const vyosHttpsAgent = new https.Agent({ rejectUnauthorized: !allowSelfSigned });
 
+export function parseVyosVersion(raw: string): string | null {
+  const m = raw.match(/VyOS\s+([\d]+\.[\d]+(?:[^\s]*)?)/i);
+  return m ? m[1] : null;
+}
+
+async function probeVyosVersion(url: string, api_key: string): Promise<string | null> {
+  try {
+    const formData = new URLSearchParams();
+    formData.append('key', api_key);
+    formData.append('data', JSON.stringify({ op: 'show', path: ['version'] }));
+    const res = await axios.post(`${url}/op`, formData, {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      timeout: 5000,
+      httpsAgent: vyosHttpsAgent,
+    });
+    const raw: string = res.data?.data ?? '';
+    return parseVyosVersion(raw);
+  } catch {
+    return null;
+  }
+}
+
 const router = Router();
 
 router.get('/', authenticate, (req: any, res) => {
   let routers;
   if (req.user.role === 'admin') {
-    routers = db.prepare('SELECT id, name, url, status, group_id FROM routers WHERE tenant_id = ?').all(req.user.tenant);
+    routers = db.prepare('SELECT id, name, url, status, group_id, vyos_version FROM routers WHERE tenant_id = ?').all(req.user.tenant);
   } else {
     const assignedGroups = db.prepare('SELECT COUNT(*) as count FROM user_router_groups WHERE user_id = ?').get(req.user.id) as any;
     if (assignedGroups.count === 0) {
-      routers = db.prepare('SELECT id, name, url, status, group_id FROM routers WHERE tenant_id = ?').all(req.user.tenant);
+      routers = db.prepare('SELECT id, name, url, status, group_id, vyos_version FROM routers WHERE tenant_id = ?').all(req.user.tenant);
     } else {
       routers = db.prepare(`
-        SELECT r.id, r.name, r.url, r.status, r.group_id
+        SELECT r.id, r.name, r.url, r.status, r.group_id, r.vyos_version
         FROM routers r
         JOIN user_router_groups urg ON r.group_id = urg.group_id
         WHERE r.tenant_id = ? AND urg.user_id = ?
@@ -66,6 +88,12 @@ router.post('/', authenticate, authorize(['admin']), (req: any, res) => {
       .run(routerId, name, url, api_key, group_id || null, req.user.tenant);
     db.prepare('INSERT INTO audit_logs (id, user_id, action, target_router_id, details, ip_address) VALUES (?, ?, ?, ?, ?, ?)')
       .run(crypto.randomUUID(), req.user.id, 'add_router', routerId, JSON.stringify({ name, url }), req.clientIp);
+    // Probe version non-blocking — don't fail registration if VyOS is unreachable
+    probeVyosVersion(url, api_key).then(vyos_version => {
+      if (vyos_version) {
+        db.prepare('UPDATE routers SET vyos_version = ? WHERE id = ?').run(vyos_version, routerId);
+      }
+    });
     res.json({ id: routerId });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
@@ -137,6 +165,16 @@ router.delete('/:id', authenticate, authorize(['admin']), (req: any, res) => {
   } catch (err: any) {
     res.status(500).json({ error: 'Failed to delete router: ' + err.message });
   }
+});
+
+router.post('/:id/detect-version', authenticate, authorize(['admin', 'operator']), async (req: any, res) => {
+  const r = db.prepare('SELECT * FROM routers WHERE id = ? AND tenant_id = ?')
+    .get(req.params.id, req.user.tenant) as any;
+  if (!r) return res.status(404).json({ error: 'Router not found' });
+
+  const vyos_version = await probeVyosVersion(r.url, r.api_key);
+  db.prepare('UPDATE routers SET vyos_version = ? WHERE id = ?').run(vyos_version, r.id);
+  res.json({ vyos_version });
 });
 
 router.post('/:id/check', authenticate, async (req: any, res) => {

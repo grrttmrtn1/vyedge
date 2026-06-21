@@ -20,6 +20,7 @@ import { Select } from '../components/ui/Select';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import type { Router, RouterGroup, User } from '../types';
 import { useRouterMetrics } from '../hooks/useRouterMetrics';
+import { apiFetch } from '../api/client';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -449,8 +450,25 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                     router.status === 'offline' ? "bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.3)]" : "bg-slate-300"
                   )} />
                   <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-slate-500">{router.status}</span>
+                  {router.vyos_version && (
+                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-medium bg-slate-100 text-slate-500 border border-slate-200">
+                      {router.vyos_version}
+                    </span>
+                  )}
                 </div>
-                <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">VyOS</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">VyOS</span>
+                  <button
+                    onClick={async () => {
+                      await apiFetch(`/api/routers/${router.id}/detect-version`, { method: 'POST' });
+                      onRefresh();
+                    }}
+                    className="text-[10px] text-slate-400 hover:text-indigo-500 transition-colors"
+                    title="Re-detect VyOS version"
+                  >
+                    Re-detect
+                  </button>
+                </div>
               </div>
             </Card>
           ))}

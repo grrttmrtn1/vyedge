@@ -53,6 +53,7 @@ export interface Router {
   url: string;
   status: string;
   group_id?: string;
+  vyos_version?: string | null;
 }
 
 export interface RouterGroup {
