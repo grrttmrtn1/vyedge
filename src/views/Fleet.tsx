@@ -19,6 +19,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import type { Router, RouterGroup, User } from '../types';
+import { useRouterMetrics } from '../hooks/useRouterMetrics';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -29,6 +30,31 @@ function DetailItem({ label, value }: { label: string; value: any }) {
     <div>
       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{label}</p>
       <p className="text-sm font-medium text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function RouterCardMetrics({ routerId, token }: { routerId: string; token: string }) {
+  const { latest } = useRouterMetrics(routerId, token);
+
+  return (
+    <div className="mt-6 grid grid-cols-2 gap-4">
+      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">CPU Load</p>
+        {latest?.cpu != null ? (
+          <p className="text-sm font-bold text-slate-900">{latest.cpu.loadPercent}%</p>
+        ) : (
+          <p className="text-sm font-bold text-slate-400">—</p>
+        )}
+      </div>
+      <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Uptime</p>
+        {latest?.uptime?.str ? (
+          <p className="text-sm font-bold text-slate-900">{latest.uptime.str}</p>
+        ) : (
+          <p className="text-sm font-bold text-slate-400">—</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -404,16 +430,7 @@ export function Fleet({ routers, groups, onRefresh, onRefreshGroups, token, onMa
                 <p className="text-[10px] text-slate-400 font-mono tracking-wider">{router.url}</p>
               </div>
 
-              <div className="mt-6 grid grid-cols-2 gap-4">
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">CPU Load</p>
-                  <div className="h-4 bg-slate-200 rounded animate-pulse w-12" />
-                </div>
-                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Uptime</p>
-                  <div className="h-4 bg-slate-200 rounded animate-pulse w-16" />
-                </div>
-              </div>
+              <RouterCardMetrics routerId={router.id} token={token} />
 
               <div className="mt-6 flex items-center gap-3">
                 <Button variant="primary" size="sm" className="flex-1 h-10 rounded-xl" onClick={() => onManage(router)}>
