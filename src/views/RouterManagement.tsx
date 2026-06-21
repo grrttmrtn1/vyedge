@@ -4,6 +4,7 @@ import {
   Globe,
   ShieldCheck,
   Lock,
+  ArrowLeftRight,
   Zap,
   Cpu,
   Terminal as TerminalIcon,
@@ -23,6 +24,7 @@ import type { Router } from '../types';
 import { ConfigNode } from './ConfigBrowser';
 import { ConfigTerminal } from './ConfigTerminal';
 import { RouterMetricsTab } from './RouterMetricsTab';
+import { NatTab } from './NatTab';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -35,7 +37,7 @@ interface RouterManagementProps {
 }
 
 export function RouterManagement({ router, token, onBack }: RouterManagementProps) {
-  const [activeTab, setActiveTab] = useState<'interfaces' | 'routing' | 'firewall' | 'vpn' | 'services' | 'system' | 'metrics' | 'terminal'>('interfaces');
+  const [activeTab, setActiveTab] = useState<'interfaces' | 'routing' | 'firewall' | 'vpn' | 'nat' | 'services' | 'system' | 'metrics' | 'terminal'>('interfaces');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -47,6 +49,7 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
     { id: 'routing', label: 'Routing', icon: <Globe size={16} />, path: ['protocols'] },
     { id: 'firewall', label: 'Firewall', icon: <ShieldCheck size={16} />, path: ['firewall'] },
     { id: 'vpn', label: 'VPN', icon: <Lock size={16} />, path: ['vpn'] },
+    { id: 'nat', label: 'NAT', icon: <ArrowLeftRight size={16} />, path: null },
     { id: 'services', label: 'Services', icon: <Zap size={16} />, path: ['service'] },
     { id: 'system', label: 'System', icon: <Cpu size={16} />, path: ['system'] },
     { id: 'metrics', label: 'Metrics', icon: <Activity size={16} />, path: null },
@@ -164,6 +167,8 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
               </button>
             </div>
           </div>
+        ) : activeTab === 'nat' ? (
+          <NatTab routerId={router.id} token={token} />
         ) : activeTab === 'metrics' ? (
           <RouterMetricsTab routerId={router.id} token={token} />
         ) : (
