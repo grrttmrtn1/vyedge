@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Copy,
   Check,
+  Package,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -26,6 +27,7 @@ import { ConfigTerminal } from './ConfigTerminal';
 import { RouterMetricsTab } from './RouterMetricsTab';
 import { NatTab } from './NatTab';
 import { ServicesTab } from './ServicesTab';
+import { ContainersTab } from './ContainersTab';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -38,7 +40,7 @@ interface RouterManagementProps {
 }
 
 export function RouterManagement({ router, token, onBack }: RouterManagementProps) {
-  const [activeTab, setActiveTab] = useState<'interfaces' | 'routing' | 'firewall' | 'vpn' | 'nat' | 'services' | 'system' | 'metrics' | 'terminal'>('interfaces');
+  const [activeTab, setActiveTab] = useState<'interfaces' | 'routing' | 'firewall' | 'vpn' | 'nat' | 'services' | 'containers' | 'system' | 'metrics' | 'terminal'>('interfaces');
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +54,7 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
     { id: 'vpn', label: 'VPN', icon: <Lock size={16} />, path: ['vpn'] },
     { id: 'nat', label: 'NAT', icon: <ArrowLeftRight size={16} />, path: null },
     { id: 'services', label: 'Services', icon: <Zap size={16} />, path: null },
+    { id: 'containers', label: 'Containers', icon: <Package size={16} />, path: null },
     { id: 'system', label: 'System', icon: <Cpu size={16} />, path: ['system'] },
     { id: 'metrics', label: 'Metrics', icon: <Activity size={16} />, path: null },
     { id: 'terminal', label: 'Terminal', icon: <TerminalIcon size={16} />, path: null },
@@ -174,6 +177,8 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
           <RouterMetricsTab routerId={router.id} token={token} />
         ) : activeTab === 'services' ? (
           <ServicesTab routerId={router.id} token={token} />
+        ) : activeTab === 'containers' ? (
+          <ContainersTab routerId={router.id} token={token} />
         ) : (
           <Card className="p-0 overflow-hidden bg-zinc-900 border-zinc-800 shadow-2xl">
             <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
