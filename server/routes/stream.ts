@@ -44,9 +44,9 @@ router.get('/stream', (req: Request, res: Response) => {
 
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
 
-  let user: any;
+  let user: jwt.JwtPayload & { id: string };
   try {
-    user = jwt.verify(token, process.env.JWT_SECRET!) as any;
+    user = jwt.verify(token, process.env.JWT_SECRET!, { algorithms: ['HS256'] }) as jwt.JwtPayload & { id: string };
   } catch {
     return res.status(401).json({ error: 'Invalid token' });
   }
