@@ -44,7 +44,7 @@ function RouterCardMetrics({ routerId, token }: { routerId: string; token: strin
         {latest?.cpu != null ? (
           <p className="text-sm font-bold text-slate-900">{latest.cpu.loadPercent}%</p>
         ) : (
-          <p className="text-sm font-bold text-slate-400">—</p>
+          <div className="h-4 bg-slate-200 rounded animate-pulse w-12" />
         )}
       </div>
       <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -52,7 +52,7 @@ function RouterCardMetrics({ routerId, token }: { routerId: string; token: strin
         {latest?.uptime?.str ? (
           <p className="text-sm font-bold text-slate-900">{latest.uptime.str}</p>
         ) : (
-          <p className="text-sm font-bold text-slate-400">—</p>
+          <div className="h-4 bg-slate-200 rounded animate-pulse w-16" />
         )}
       </div>
     </div>
