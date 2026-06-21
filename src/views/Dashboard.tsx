@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import {
   Server,
   CheckCircle2,
@@ -53,6 +53,18 @@ export function Dashboard({ routers, groups, logs, onAddNode, onScan, onSync, on
     recentActions: logs.length,
   }), [routers, logs]);
 
+  const [onlinePulse, setOnlinePulse] = useState(false);
+  const prevOnlineRef = useRef(stats.online);
+
+  useEffect(() => {
+    if (stats.online !== prevOnlineRef.current) {
+      setOnlinePulse(true);
+      prevOnlineRef.current = stats.online;
+      const t = setTimeout(() => setOnlinePulse(false), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [stats.online]);
+
   // Group routers by their group_id for the fleet health grid
   const routersByGroup = useMemo(() => {
     const map: { label: string; routers: Router[] }[] = [];
@@ -89,6 +101,7 @@ export function Dashboard({ routers, groups, logs, onAddNode, onScan, onSync, on
           iconBg="bg-emerald-50"
           sparkValues={[0, 1, 1, stats.online, stats.online, stats.online, stats.online]}
           sparkColor="#10b981"
+          pulse={onlinePulse}
         />
         <StatCard
           label="Offline / Unknown"
@@ -235,6 +248,7 @@ function StatCard({
   iconBg,
   sparkValues,
   sparkColor,
+  pulse,
 }: {
   label: string;
   value: number;
@@ -242,6 +256,7 @@ function StatCard({
   iconBg: string;
   sparkValues?: number[];
   sparkColor?: string;
+  pulse?: boolean;
 }) {
   const sparkData = sparkValues?.map(v => ({ v }));
 
@@ -253,7 +268,7 @@ function StatCard({
           {icon}
         </div>
       </div>
-      <h3 className="text-3xl font-bold text-slate-900 tracking-tight mb-3">{value}</h3>
+      <h3 className={cn('text-3xl font-bold tracking-tight mb-3 transition-colors duration-300', pulse ? 'text-emerald-500' : 'text-slate-900')}>{value}</h3>
       {sparkData && sparkColor && (
         <div className="h-10 -mx-1">
           <ResponsiveContainer width="100%" height="100%">
