@@ -26,7 +26,7 @@ function parseContainerText(text: string, config: Record<string, any>): Containe
     for (const line of lines) {
       const parts = line.trim().split(/\s{2,}/);
       if (parts.length >= 5) {
-        const name = parts[1] ?? '';
+        const name = parts[0] ?? '';
         const status = parts[4]?.toLowerCase() ?? '';
         if (name) stateMap[name] = status.includes('run') ? 'running' : 'stopped';
       }
@@ -61,6 +61,10 @@ export function ContainersTab({ routerId }: ContainersTabProps) {
         vyosApi.send(routerId, 'show', { op: 'showConfig', path: ['container', 'name'] }) as Promise<any>,
         vyosApi.send(routerId, 'op', { op: 'show', path: ['container'] }) as Promise<any>,
       ]);
+      if (configRes.status === 'rejected' && stateRes.status === 'rejected') {
+        setError(configRes.reason?.message ?? 'Failed to load containers');
+        return;
+      }
       const config = configRes.status === 'fulfilled' ? (configRes.value?.data ?? {}) : {};
       const stateText = stateRes.status === 'fulfilled' ? (stateRes.value?.data ?? '') : '';
       setContainers(parseContainerText(stateText, config));
