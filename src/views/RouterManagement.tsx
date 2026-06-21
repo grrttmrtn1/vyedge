@@ -25,6 +25,7 @@ import { ConfigNode } from './ConfigBrowser';
 import { ConfigTerminal } from './ConfigTerminal';
 import { RouterMetricsTab } from './RouterMetricsTab';
 import { NatTab } from './NatTab';
+import { ServicesTab } from './ServicesTab';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -50,7 +51,7 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
     { id: 'firewall', label: 'Firewall', icon: <ShieldCheck size={16} />, path: ['firewall'] },
     { id: 'vpn', label: 'VPN', icon: <Lock size={16} />, path: ['vpn'] },
     { id: 'nat', label: 'NAT', icon: <ArrowLeftRight size={16} />, path: null },
-    { id: 'services', label: 'Services', icon: <Zap size={16} />, path: ['service'] },
+    { id: 'services', label: 'Services', icon: <Zap size={16} />, path: null },
     { id: 'system', label: 'System', icon: <Cpu size={16} />, path: ['system'] },
     { id: 'metrics', label: 'Metrics', icon: <Activity size={16} />, path: null },
     { id: 'terminal', label: 'Terminal', icon: <TerminalIcon size={16} />, path: null },
@@ -171,6 +172,8 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
           <NatTab routerId={router.id} token={token} />
         ) : activeTab === 'metrics' ? (
           <RouterMetricsTab routerId={router.id} token={token} />
+        ) : activeTab === 'services' ? (
+          <ServicesTab routerId={router.id} token={token} />
         ) : (
           <Card className="p-0 overflow-hidden bg-zinc-900 border-zinc-800 shadow-2xl">
             <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
