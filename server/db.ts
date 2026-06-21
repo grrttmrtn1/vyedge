@@ -108,6 +108,15 @@ db.exec(`
     fired_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     resolved_at DATETIME
   );
+
+  CREATE TABLE IF NOT EXISTS firewall_drafts (
+    id TEXT PRIMARY KEY,
+    router_id TEXT NOT NULL,
+    operation TEXT NOT NULL,
+    path TEXT NOT NULL,
+    value TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
 `);
 
 const migrate = () => {

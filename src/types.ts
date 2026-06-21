@@ -98,6 +98,15 @@ export interface AlertRule {
   cooldownMinutes: number;
 }
 
+export interface FirewallDraft {
+  id: string;
+  router_id: string;
+  operation: 'set' | 'delete';
+  path: string[];
+  value?: string | null;
+  created_at: string;
+}
+
 export interface AlertEvent {
   type: 'alert';
   ruleId: string;

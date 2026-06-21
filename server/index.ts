@@ -12,6 +12,7 @@ import logsRouter from './routes/logs.js';
 import settingsRouter from './routes/settings.js';
 import systemRouter from './routes/system.js';
 import streamRouter from './routes/stream.js';
+import firewallRouter from './routes/firewall.js';
 
 export async function createApp() {
   if (!process.env.JWT_SECRET) {
@@ -62,6 +63,7 @@ export async function createApp() {
   app.use('/api', settingsRouter);
   app.use('/api/system', systemRouter);
   app.use('/api', streamRouter);
+  app.use('/api/firewall', firewallRouter);
 
   return app;
 }
