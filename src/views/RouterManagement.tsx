@@ -13,7 +13,6 @@ import {
   AlertCircle,
   Copy,
   Check,
-  BarChart2,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -23,6 +22,7 @@ import { Button } from '../components/ui/Button';
 import type { Router } from '../types';
 import { ConfigNode } from './ConfigBrowser';
 import { ConfigTerminal } from './ConfigTerminal';
+import { RouterMetricsTab } from './RouterMetricsTab';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -165,19 +165,7 @@ export function RouterManagement({ router, token, onBack }: RouterManagementProp
             </div>
           </div>
         ) : activeTab === 'metrics' ? (
-          <Card>
-            <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
-              <div className="w-14 h-14 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                <BarChart2 size={24} className="text-indigo-400" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-900">Live Metrics</h3>
-                <p className="text-sm text-slate-400 mt-1 max-w-xs">
-                  Real-time CPU, memory, and interface throughput charts arrive in Phase 4 via SSE.
-                </p>
-              </div>
-            </div>
-          </Card>
+          <RouterMetricsTab routerId={router.id} token={token} />
         ) : (
           <Card className="p-0 overflow-hidden bg-zinc-900 border-zinc-800 shadow-2xl">
             <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between">
