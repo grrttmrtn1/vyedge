@@ -59,8 +59,9 @@ router.delete('/:routerId/drafts/:id', authenticate, authorize(['admin', 'operat
 });
 
 router.post('/:routerId/deploy', authenticate, authorize(['admin', 'operator']), async (req: any, res) => {
-  const r = db.prepare('SELECT * FROM routers WHERE id = ? AND tenant_id = ?')
-    .get(req.params.routerId, req.user.tenant) as any;
+  const r = db.prepare(
+    'SELECT r.* FROM routers r LEFT JOIN user_router_groups urg ON r.group_id = urg.group_id WHERE r.id = ? AND r.tenant_id = ? AND (urg.user_id = ? OR ? = \'admin\')'
+  ).get(req.params.routerId, req.user.tenant, req.user.id, req.user.role) as any;
   if (!r) return res.status(404).json({ error: 'Router not found' });
 
   const drafts = db.prepare(
